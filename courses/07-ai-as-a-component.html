@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 7 of 8. A model is a latency budget, a cost line and a failure mode. Retrieval indexes go stale, agent loops have unbounded cost, and DORA 2025 found AI raises throughput and instability at the same time.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="AI as a system component - learn system design with phoebe">
+<meta property="og:description" content="Session 7 of 8. The model box is the small box. Everything around it is the system.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/courses/07-ai-as-a-component.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AI as a system component - learn system design with phoebe">
+<meta name="twitter:description" content="Session 7 of 8. Budgets, stale indexes, unbounded loops, and evals as infrastructure.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 7 · AI as a system component - learn system design with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-system-design-with-phoebe</a> / Session 7 of 8</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn System Design with Phoebe · Session 7 of 8</div>
+    <h1>AI as a system <span class="accent">component</span></h1>
+    <p class="sub">Everything you have built in six sessions is about to meet a component that has non-deterministic latency, non-deterministic cost, a derived index that goes stale without telling anyone, and a loop that can decide to do more work than you budgeted for. None of that makes it special. It makes it a component with an unusually awkward profile, and the design job is exactly the same job: give it a budget, give it a boundary, and decide what happens when it fails.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Hardest</span>
+      <span class="chip audience">Anyone being asked to "add AI" to a platform</span>
+      <span class="chip audience">No model training required</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · The small box, budgets, stale indexes</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: budget Daybreak's support answer</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are, and what this session is not</h2>
+    </div>
+    <p class="lede">This is not a course on models, evaluation methodology, retrieval-augmented generation or agent frameworks. All four have their own courses on this shelf. Tonight is the <strong>architecture</strong> question only: where does this component sit, what budget does it get, and what happens to everything else when it misbehaves.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A latency and cost budget for one model-backed feature, a staleness owner for the retrieval index, a bound on the agent loop, and a straight answer to the question your leadership is currently getting wrong about throughput and stability.</p>
+    </div>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the shape</span>
+      <h2>The model box is the small box, and it has been for a decade</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">Sculley and colleagues made this argument at NeurIPS in 2015 about classical machine learning systems. Nothing about the last decade has weakened it. If anything, the surrounding boxes got bigger.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A small model box surrounded by much larger boxes for data collection, serving infrastructure, monitoring, evaluation, retrieval and guardrails">
+        <style>
+          .s7bH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+          .s7bM { font: 800 13px Inter, sans-serif; fill: #fff; }
+          .s7bN { font: 400 11.5px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <rect x="40" y="30" width="180" height="90" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s7bH" x="56" y="72">Data collection</text>
+        <text class="s7bN" x="56" y="92">and verification</text>
+
+        <rect x="232" y="30" width="180" height="90" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s7bH" x="248" y="72">Retrieval index</text>
+        <text class="s7bN" x="248" y="92">build, refresh, monitor</text>
+
+        <rect x="424" y="52" width="120" height="46" rx="8" fill="#0C4A6E"/>
+        <text class="s7bM" x="440" y="80">Model</text>
+
+        <rect x="556" y="30" width="140" height="90" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s7bH" x="572" y="72">Serving</text>
+        <text class="s7bN" x="572" y="92">latency, cost</text>
+
+        <rect x="708" y="30" width="132" height="90" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s7bH" x="724" y="72">Guardrails</text>
+        <text class="s7bN" x="724" y="92">in and out</text>
+
+        <rect x="40" y="132" width="290" height="76" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+        <text class="s7bH" x="56" y="164">Evaluation, as a gate</text>
+        <text class="s7bN" x="56" y="186">an owner, a threshold, a schedule</text>
+
+        <rect x="342" y="132" width="254" height="76" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+        <text class="s7bH" x="358" y="164">Monitoring</text>
+        <text class="s7bN" x="358" y="186">what it did, not just that it ran</text>
+
+        <rect x="608" y="132" width="232" height="76" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+        <text class="s7bH" x="624" y="164">Cost attribution</text>
+        <text class="s7bN" x="624" y="186">per feature, per team</text>
+
+        <text class="s7bN" x="40" y="248">Every box on this diagram except the dark one is a thing you already learned in sessions 1 to 6.</text>
+        <text class="s7bN" x="40" y="272">The model is the only genuinely new component, and it is the smallest area on the page.</text>
+        <text class="s7bN" x="40" y="296">Sculley et al., NeurIPS 2015. The shape has not changed, the surrounding boxes just got bigger.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - if your AI project plan is mostly about the dark box, the plan is mostly missing</figcaption>
+    </figure>
+
+    <div class="wipe" data-title="Two ways to add AI to Daybreak's support flow" data-label-a="The model is the system" data-label-b="The model is a component" data-foot="Drag across. Same model, same vendor, same prompt. Different architecture around it.">
+      <div class="wipe-a">
+        <p><strong>A service calls the model with the customer's question and returns whatever comes back.</strong></p>
+        <p>p95 is whatever the provider's p95 is today, and it changed last Thursday without anyone telling you. Cost per answer is whatever the answer's length turned out to be. When the provider is degraded, your support page is degraded, and the failure looks like slowness rather than an outage, so the circuit never opens. Nobody can say whether answer quality moved this month.</p>
+      </div>
+      <div class="wipe-b">
+        <p><strong>A component with a timeout, a token ceiling, a cache, a fallback and a gate.</strong></p>
+        <p>800 ms timeout with a deterministic fallback to the top three help articles. A token ceiling that makes cost per answer predictable within a band. A cache on the 200 questions that are 60 percent of volume. An eval that runs on every prompt change with a threshold and an owner. When the provider degrades, the page gets slightly worse instead of stopping, and someone is paged.</p>
+      </div>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Three properties that make this component awkward<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Non-deterministic latency.</strong> Response time depends on output length, which depends on the input, which depends on the user. You cannot load-test this the way you load-test a query. Design with a timeout and a fallback, because a p95 you measured last month is not a promise.</li>
+          <li><strong>Non-deterministic cost.</strong> A per-request cost that varies by an order of magnitude with input. Without a token ceiling, one unusual input pattern can move a monthly bill more than a traffic spike would.</li>
+          <li><strong>Non-deterministic output.</strong> The same input can produce different output, which breaks the assumption every cache, test and diff you own is built on. This is why evaluation exists as a component rather than as a test suite.</li>
+        </ul>
+        <div class="callout tip">
+          <p>Little's Law from session 1 does real work here. <span class="mono">L = λW</span>, and W is the part that is unstable. At 5 requests a second with an 800 ms response, 4 are in flight. When the provider degrades to 12 seconds, 60 are in flight. If your connection pool is 20, you now have an outage in a component that is technically still working.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the derived assets</span>
+      <h2>The index is a table, and nobody is watching it</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">A retrieval index is a derived asset built from source data on a schedule. That is the exact definition of everything in session 4's graph, and yet it is almost never in the graph.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A retrieval index compared against a normal derived table across freshness, ownership, monitoring and failure visibility">
+        <style>
+          .s7iH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+          .s7iB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s7iR { font: 700 12px Inter, sans-serif; fill: #991B1B; }
+          .s7iN { font: 400 11.5px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <text class="s7iH" x="330" y="42">A derived table</text>
+        <text class="s7iH" x="596" y="42">A retrieval index</text>
+        <line x1="40" y1="54" x2="840" y2="54" stroke="#DEE7EC"/>
+
+        <text class="s7iB" x="40" y="82">In the dependency graph</text>
+        <text class="s7iB" x="330" y="82">yes</text>
+        <text class="s7iR" x="596" y="82">usually not</text>
+
+        <text class="s7iB" x="40" y="112">Has a freshness SLA</text>
+        <text class="s7iB" x="330" y="112">yes, 05:10</text>
+        <text class="s7iR" x="596" y="112">nobody knows</text>
+
+        <text class="s7iB" x="40" y="142">Has a named owner</text>
+        <text class="s7iB" x="330" y="142">a team and a rota</text>
+        <text class="s7iR" x="596" y="142">whoever built it</text>
+
+        <text class="s7iB" x="40" y="172">Failure is visible</text>
+        <text class="s7iB" x="330" y="172">the load errors</text>
+        <text class="s7iR" x="596" y="172">answers get worse</text>
+
+        <text class="s7iB" x="40" y="202">Row-count check</text>
+        <text class="s7iB" x="330" y="202">yes, banded</text>
+        <text class="s7iR" x="596" y="202">rarely</text>
+
+        <rect x="40" y="226" width="800" height="52" rx="10" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5"/>
+        <text class="s7iH" x="58" y="250" fill="#991B1B">A stale index does not error. It answers confidently from last quarter's policy.</text>
+        <text class="s7iN" x="58" y="270">This is session 5's silent-and-unbounded failure, wearing a new hat.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - put the index in the graph and most of this problem disappears</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Bounding the agent loop<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>An agent is a model in a loop with tools. Architecturally that is a component that decides how much work to do, which is a thing no other component in your platform is allowed to do.</p>
+        <ul>
+          <li><strong>Bound the iterations.</strong> A hard cap on tool calls per request. Not because the loop is dangerous, but because an unbounded loop has no cost estimate, and a component with no cost estimate cannot be in a budget.</li>
+          <li><strong>Bound the wall clock.</strong> A deadline for the whole request, separate from the per-call timeout. Ten calls of 800 ms is eight seconds, and every one of them was individually inside its budget.</li>
+          <li><strong>Bound the blast radius of the tools.</strong> This is session 2 and session 6 arriving at the same time: whatever the agent can call, it can call wrongly and repeatedly. Read-only tools by default, write tools behind an explicit boundary with its own authorisation.</li>
+          <li><strong>Make the loop observable.</strong> Log what it did, not just that it finished. "The request succeeded" is not a useful statement about a component that chose its own path.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Evals and guardrails are infrastructure, not a notebook<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Treat the eval exactly the way session 2 treats a contract: it is a gate in a pipeline with an owner, a threshold and a schedule, or it is a document.</p>
+        <table class="clean">
+          <tr><th>Property</th><th>Notebook version</th><th>Infrastructure version</th></tr>
+          <tr><td>When it runs</td><td>when someone remembers</td><td>every prompt, model or index change</td></tr>
+          <tr><td>What happens on failure</td><td>a conversation</td><td>the deploy stops</td></tr>
+          <tr><td>Who owns the threshold</td><td>unclear</td><td>a named team, written down</td></tr>
+          <tr><td>Where the result lives</td><td>a screenshot in chat</td><td>a tracked metric with history</td></tr>
+        </table>
+        <p>The method - which metrics, which judges, how to calibrate them - is <span class="mono">learn-model-evaluation-with-phoebe</span>. What this session insists on is the shape: <strong>a gate on the path, with a name on it.</strong></p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Budget Daybreak's support answer</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">One feature: a customer asks "where is my order" and gets an answer. You are going to give that feature four budgets and one fallback, and then find out what an unbounded loop does to the bill.</p>
+
+    <div class="tick" data-stages="Latency|Cost|Freshness|Failure|Gate" data-title="Five budgets for one model-backed feature" data-foot="The same five questions as any other component. That is the point of the session.">
+      <p class="tick-note" data-stage="0"><b>Latency.</b> p95 under 1,200 ms end to end, of which the model gets 800 ms. Past the timeout you serve the deterministic fallback, which is the top three help articles and the order status from the database.</p>
+      <p class="tick-note" data-stage="1"><b>Cost.</b> A token ceiling on input and output. Cost per answer inside a band you can multiply by volume. If you cannot write "$X per thousand answers" you do not have a budget, you have a bill arriving later.</p>
+      <p class="tick-note" data-stage="2"><b>Freshness.</b> The index refreshes nightly and appears in the session 4 graph as a node, with an owner and a row-count band. A refresh that silently produces 40 percent fewer chunks should stop, loudly.</p>
+      <p class="tick-note" data-stage="3"><b>Failure.</b> Provider degraded: circuit opens, fallback serves, someone is paged. Index stale: answers degrade quietly, which is why it needs a freshness check rather than an error handler.</p>
+      <p class="tick-note" data-stage="4"><b>Gate.</b> An eval set that runs on every prompt, model or index change, with a threshold, an owner and a deploy that stops. Not a notebook run before launch and never again.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><p><strong>Write the latency budget end to end.</strong> Not just the model call - retrieval, model, guardrail, render. Then decide what the user sees when it is exceeded. A design without a fallback has chosen "the page hangs" as its fallback.</p></div>
+      <div class="step"><p><strong>Do the Little's Law check.</strong> Your request rate times the degraded response time. Compare against your connection pool or worker count. This is the failure that presents as an outage in a component that is still technically working.</p></div>
+      <div class="step"><p><strong>Now the cost meter below.</strong> It starts at $40 per thousand answers. Add the things that make answers better and watch what each one costs. Then find the two that make it cheaper.</p></div>
+      <div class="step"><p><strong>Switch on the unbounded loop last.</strong> "Let the agent decide when it is done, up to 20 tool calls." It more than doubles the bill on its own, and the reason it keeps getting shipped is that it demos beautifully on the five questions somebody tried.</p></div>
+      <div class="step"><p><strong>Put the index in your session 4 graph.</strong> As a node, with an owner, a refresh schedule and a row-count band. This one move converts a silent failure class into a loud one, and costs nothing.</p></div>
+      <div class="step"><p><strong>Write the gate.</strong> One sentence: "On any change to the prompt, the model version or the index, the eval set runs and the deploy stops below X, and Y team owns X." If you cannot name Y, the gate does not exist yet.</p></div>
+    </div>
+
+    <div class="stakes" data-base="40" data-unit="$ per 1,000 answers" data-lower-is-better="1" data-title="Daybreak's support answer, per thousand" data-foot="Honest illustrative arithmetic for one feature, not the session 5 platform board. Your provider's prices replace these numbers; the shape of the trade does not change.">
+      <label><input type="checkbox" data-delta="18"> Retrieve and pass three help articles with every question</label>
+      <label><input type="checkbox" data-delta="26"> A second pass that checks and rewrites the first answer</label>
+      <label><input type="checkbox" data-delta="-22"> Cache the 200 questions that are 60 percent of volume</label>
+      <label><input type="checkbox" data-delta="-9"> Route the easy questions to a smaller model first</label>
+      <label><input type="checkbox" data-delta="64" data-trap="1"> Let the agent decide when it is done, up to 20 tool calls</label>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>If you take one thing from tonight.</strong> Give the model component the same four things every other component gets - a budget, a boundary, an owner and a failure plan. There is nothing about it that earns an exemption, and the exemption is where every one of these projects goes wrong.</p>
+    </div>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers the organisational effect</span>
+      <h2>The finding your leadership is currently half-quoting</h2>
+      <span class="tag concept">4 min live</span>
+    </div>
+    <p class="lede">DORA's 2025 State of DevOps report is the largest recent piece of evidence on what AI adoption does to a software organisation, and it says two things at once. Almost everyone quotes one of them.</p>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Throughput up, stability down, in the same dataset<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Throughput went up, substantially.</strong> Epics completed per developer up 66.2 percent, with a positive relationship between AI adoption and both software delivery throughput and product performance.</li>
+          <li><strong>Stability went down.</strong> Higher AI adoption is associated with higher software delivery instability. The report's own reading is that AI increases the rate of change faster than review and deployment infrastructure can absorb it.</li>
+          <li><strong>The value is attributed to the surroundings.</strong> The report's central argument is that AI amplifies whatever practices you already have. Strong testing, mature version control and fast feedback turn the extra volume into delivery. Their absence turns the extra volume into instability.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">What that means for a designer</span>
+          <p>This is the same conclusion as sessions 2 and 5, arriving from a completely different direction. More change flowing through the same boundaries produces more failures at those boundaries. If your change failure rate is already uncomfortable, adding a throughput multiplier makes it worse before it makes anything better - and the fix is the boundary, not the model.</p>
+        </div>
+        <p>The report also replaced its long-standing four performance tiers with seven team profiles, on the argument that a single ranking was hiding too much about culture and constraint. Worth knowing before someone quotes "elite" at you.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 8 - the capstone</h2>
+      <span class="tag exercise">35 min</span>
+    </div>
+    <ol>
+      <li><strong>Find one model call in your organisation and ask what its budget is.</strong> Latency, cost, timeout, fallback. If any of the four is missing, you have found the session's point in the wild.</li>
+      <li><strong>Find a derived index or embedding store and ask when it last refreshed.</strong> Then ask who would know if it stopped. These two questions take four minutes and are frequently uncomfortable.</li>
+      <li><strong>Do the Little's Law arithmetic on one AI-backed request path.</strong> Rate times degraded latency against pool size.</li>
+      <li><strong>Write the gate sentence.</strong> One line, with a team name in it.</li>
+      <li><strong>Bring your design doc, complete, to session 8.</strong> All eight blocks. Session 8 is a review, and the thing being reviewed is yours.</li>
+    </ol>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 7 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Why does a stale retrieval index belong in the same category as session 5's most expensive failures?</p>
+      <button class="qopt" type="button">A · Because rebuilding an index is expensive and slow</button>
+      <button class="qopt" type="button">B · Because it does not error - it answers confidently from old sources, so the failure is silent and unbounded until somebody notices the advice was last quarter's policy</button>
+      <button class="qopt" type="button">C · Because vector databases are less reliable than relational ones</button>
+      <p class="qwhy">An index is a derived asset built on a schedule, exactly like every node in the session 4 graph, but it is usually not in the graph, has no freshness SLA and no row-count band. Adding it as a node with an owner converts a silent failure into a loud one and costs nothing.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · At 5 requests a second, the provider degrades from 800 ms to 12 seconds. Your connection pool is 20. What have you got?</p>
+      <button class="qopt" type="button">A · Slower responses, but the system keeps working</button>
+      <button class="qopt" type="button">B · A cost problem, since longer calls cost more</button>
+      <button class="qopt" type="button">C · An outage - Little's Law gives 60 requests in flight against a pool of 20, in a component that is technically still working</button>
+      <p class="qwhy">L = λW. 5 x 12 = 60. The dependency never returned an error and never went down, and your service is unavailable. This is why a timeout with a deterministic fallback is a design requirement rather than a nicety.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · DORA 2025 found AI adoption associated with higher throughput and higher delivery instability. What is the design conclusion?</p>
+      <button class="qopt" type="button">A · More change flowing through the same boundaries produces more failures at those boundaries - so the fix is the boundary and the feedback loop, not the model</button>
+      <button class="qopt" type="button">B · AI adoption should be slowed until stability improves</button>
+      <button class="qopt" type="button">C · The instability finding cancels out the throughput finding, so the net effect is neutral</button>
+      <p class="qwhy">The report's own framing is amplification: AI multiplies whatever practices exist. Strong testing, mature version control and fast feedback convert the extra volume into delivery; their absence converts it into instability. That is sessions 2 and 5 arriving from a different direction.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ OFFICIAL COVERAGE ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Hidden Technical Debt in Machine Learning Systems, Sculley et al., NeurIPS 2015</span><span class="note">The model box is the small box. Every surrounding box is a thing sessions 1 to 6 already taught</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Model serving as a latency and cost budget</span><span class="note">Timeout, deterministic fallback, token ceiling, cache. Little's Law applied to a degrading provider: 5 x 12 against a pool of 20</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Retrieval index as a derived asset</span><span class="note">Compared line by line against a normal derived table: graph membership, freshness SLA, owner, failure visibility, row-count band</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Bounding the agent loop</span><span class="note">Iterations, wall clock, tool blast radius, and observability of what it did rather than that it finished</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Evals and guardrails as infrastructure</span><span class="note">A gate with an owner, a threshold and a schedule, contrasted against the notebook version</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DORA State of DevOps 2025</span><span class="note">Epics per developer up 66.2 percent, AI adoption associated with higher throughput and higher instability, value attributed to surrounding practices. Four tiers replaced by seven team profiles</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Evaluation method, RAG construction, agent frameworks</span><span class="note">learn-model-evaluation-with-phoebe, learn-rag-with-phoebe and learn-ai-agents-with-phoebe. This session owns only where the components sit and what budgets they get</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Full source map with every URL: <span class="mono">materials/official-course-map.md</span> in this repo. Certificates, videos and assessments stay with the official providers.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 7 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The small box</b><span>If the AI plan is mostly about the model, the plan is mostly missing.</span></div>
+      <div class="cheat-item"><b>Four budgets</b><span>Latency with a fallback, cost with a token ceiling, freshness with an owner, failure with a circuit.</span></div>
+      <div class="cheat-item"><b>The index is a node</b><span>Put it in the graph with a refresh schedule and a row-count band. Silent becomes loud, for free.</span></div>
+      <div class="cheat-item"><b>Bound the loop</b><span>Iterations, wall clock, tool reach. A component with no cost estimate cannot be in a budget.</span></div>
+      <div class="cheat-item"><b>L = λW again</b><span>5 x 12 = 60 in flight against a pool of 20. An outage inside a dependency that never errored.</span></div>
+      <div class="cheat-item"><b>DORA 2025</b><span>Throughput up 66.2 percent per developer, stability down. AI amplifies the practices you already have.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>Everything is decided. Session 8 is the part nobody teaches: writing it down so it survives, and defending it in a room. ADRs in four parts, one-way and two-way doors, the four questions a good reviewer asks - and a capstone where you take apart a deliberately broken version of Daybreak's architecture and produce the decision records that fix it.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 7 of 8 · learn-system-design-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="06-the-governed-shell.html">← Previous</a> &nbsp;·&nbsp; <a href="08-the-design-review.html">Next: The design review →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=2"></script>
+</body>
+</html>

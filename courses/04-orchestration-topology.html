@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 4 of 8. Cron knows what time it is. An orchestrator knows what finished. Idempotency as a design property, backfills that are boring, and SLAs on data rather than on services.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Orchestration topology - learn system design with phoebe">
+<meta property="og:description" content="Session 4 of 8. Cron knows what time it is. An orchestrator knows what finished.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/courses/04-orchestration-topology.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Orchestration topology - learn system design with phoebe">
+<meta name="twitter:description" content="Session 4 of 8. Dependencies, idempotency, backfills and SLAs on data.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 4 · Orchestration topology - learn system design with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-system-design-with-phoebe</a> / Session 4 of 8</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn System Design with Phoebe · Session 4 of 8</div>
+    <h1>Orchestration <span class="accent">topology</span></h1>
+    <p class="sub">Cron knows what time it is. An orchestrator knows what finished. That one sentence is worth more than any tool comparison you will read this year, because almost every silent data failure you have ever had traces to a job that ran on schedule against inputs that were not there. Tonight: dependencies as a design decision, idempotency as a property rather than a trick, backfills that are boring on purpose, and SLAs written on data instead of on services.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Medium</span>
+      <span class="chip audience">Anyone whose data arrives on a schedule</span>
+      <span class="chip audience">Halfway scorecard tonight</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Time versus dependency, and idempotency</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: Daybreak's DAG and its data SLAs</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are</h2>
+    </div>
+    <p class="lede">Session 3 picked a load rhythm - 15-minute incremental micro-batches. Tonight is about the machine that runs that rhythm, and specifically about what it knows. This is the halfway point, and there is a scorecard at the end of the build-along that grades your design doc as a half-finished thing, which is what it should be.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Daybreak's dependency graph on paper, one data SLA written with a clock time in it, an idempotency rule for every write in the graph, and an honest halfway grade on the document you have been building since session 1.</p>
+    </div>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers time versus dependency</span>
+      <h2>The job ran. That is not the same as the job worked</h2>
+      <span class="tag concept">7 min live</span>
+    </div>
+    <p class="lede">A schedule is a guess about how long the previous thing takes. It is a guess that is correct until the day it matters, and on that day nothing errors.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A cron schedule where an upstream job runs late so the downstream job reads yesterday's data, compared with a dependency-aware orchestrator that waits">
+        <style>
+          .s4tH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+          .s4tB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s4tN { font: 400 12px Inter, sans-serif; fill: #5B6B77; }
+          .s4tR { font: 700 12px Inter, sans-serif; fill: #991B1B; }
+          .s4tG { font: 700 12px Inter, sans-serif; fill: #08324A; }
+        </style>
+        <text class="s4tH" x="40" y="32">Cron · everything runs at a fixed time</text>
+        <line x1="40" y1="46" x2="840" y2="46" stroke="#DEE7EC"/>
+
+        <rect x="40" y="60" width="230" height="30" rx="6" fill="#0C4A6E" fill-opacity=".2" stroke="#0C4A6E"/>
+        <text class="s4tB" x="54" y="80">extract · normally 02:00-02:40</text>
+        <rect x="40" y="98" width="420" height="30" rx="6" fill="#FEF2F2" stroke="#FCA5A5"/>
+        <text class="s4tB" x="54" y="118">extract, on the bad day · 02:00-03:20</text>
+        <rect x="300" y="136" width="180" height="30" rx="6" fill="#F0A202" fill-opacity=".26" stroke="#F0A202"/>
+        <text class="s4tB" x="314" y="156">transform · starts 03:00</text>
+        <text class="s4tR" x="500" y="156">reads yesterday. Exits 0. Says success</text>
+
+        <text class="s4tH" x="40" y="200">Orchestrator · things run when their inputs are ready</text>
+        <line x1="40" y1="214" x2="840" y2="214" stroke="#DEE7EC"/>
+
+        <rect x="40" y="228" width="420" height="30" rx="6" fill="#FEF2F2" stroke="#FCA5A5"/>
+        <text class="s4tB" x="54" y="248">extract, on the bad day · 02:00-03:20</text>
+        <rect x="466" y="228" width="180" height="30" rx="6" fill="#0C4A6E" fill-opacity=".2" stroke="#0C4A6E"/>
+        <text class="s4tB" x="480" y="248">transform · starts 03:20</text>
+        <text class="s4tG" x="666" y="248">correct, and 40 min late</text>
+
+        <rect x="40" y="278" width="800" height="44" rx="10" fill="#EEF6FB" stroke="#0C4A6E" stroke-width="1.5"/>
+        <text class="s4tH" x="60" y="305">Late and correct is an incident you can see. On time and wrong is one you cannot.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the cron version has no error anywhere in it, which is exactly the problem</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>What "dependency-aware" actually buys you<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Correct ordering without guessing.</strong> Downstream starts when upstream finished, not when the clock says it probably has.</li>
+          <li><strong>Failure that stops at a branch.</strong> If the payments extract fails, everything that depends on payments is skipped and marked, and everything that does not still runs. Under cron, the failure either takes out the whole chain or, worse, does not stop it at all.</li>
+          <li><strong>A recorded history you can reason about.</strong> Which run produced this table, with what inputs, and did it succeed. This is the raw material for lineage in session 6.</li>
+          <li><strong>SLAs that can be missed out loud.</strong> "This asset is expected by 05:10" is a statement the orchestrator can check and page on. Cron has no concept of expectation, only of instruction.</li>
+        </ul>
+        <div class="callout tip">
+          <p>On the session 5 board this lever is worth <strong>16 points of blast radius and $150 a month</strong>, and it also takes 4 minutes off freshness because work no longer waits for a fixed clock gap. It is the only lever on the board that improves two meters at once.</p>
+        </div>
+      </div>
+    </details>
+
+    <div class="hotspot" data-title="Daybreak's graph, and the four places it can lie to you">
+      <div class="hs-mock">
+        <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Daybreak's pipeline graph from checkout extract through staging and transform to marts and the dashboard, with a payments branch">
+          <style>
+            .s4gH { font: 700 12px Inter, sans-serif; fill: #08324A; }
+            .s4gN { font: 400 11.5px Inter, sans-serif; fill: #5B6B77; }
+          </style>
+          <rect x="30" y="40" width="150" height="52" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+          <text class="s4gH" x="44" y="64">checkout extract</text>
+          <text class="s4gN" x="44" y="82">02:00 · 40 min</text>
+
+          <rect x="30" y="152" width="150" height="52" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+          <text class="s4gH" x="44" y="176">payments extract</text>
+          <text class="s4gN" x="44" y="194">02:00 · 12 min</text>
+
+          <rect x="242" y="96" width="150" height="52" rx="9" fill="#fff" stroke="#DEE7EC"/>
+          <text class="s4gH" x="256" y="120">staging</text>
+          <text class="s4gN" x="256" y="138">typed, deduped</text>
+
+          <rect x="454" y="96" width="150" height="52" rx="9" fill="#fff" stroke="#DEE7EC"/>
+          <text class="s4gH" x="468" y="120">transform</text>
+          <text class="s4gN" x="468" y="138">star schema</text>
+
+          <rect x="666" y="40" width="174" height="52" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+          <text class="s4gH" x="680" y="64">revenue mart</text>
+          <text class="s4gN" x="680" y="82">SLA 05:10</text>
+
+          <rect x="666" y="152" width="174" height="52" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+          <text class="s4gH" x="680" y="176">refunds mart</text>
+          <text class="s4gN" x="680" y="194">SLA 06:00</text>
+
+          <path d="M180 66 L242 110 M180 178 L242 134 M392 122 L454 122 M604 114 L666 78 M604 130 L666 170" stroke="#C3D2DC" stroke-width="2" fill="none"/>
+          <text class="s4gN" x="30" y="248">Two sources, one shared staging layer, two marts with different promises.</text>
+          <text class="s4gN" x="30" y="270">Four numbered failure points below. None of them produce an error message.</text>
+        </svg>
+      </div>
+      <button class="hs-pin" style="--x:12%;--y:22%" data-title="Late, not failed"
+              data-cap="Checkout takes 80 minutes instead of 40. Nothing errored. Under a fixed schedule, staging reads a partial file and everything downstream is quietly wrong."></button>
+      <button class="hs-pin" style="--x:36%;--y:40%" data-title="The shared layer"
+              data-cap="Staging is where both sources meet, which makes it the highest-blast-radius asset in the graph. Everything downstream of a shared node inherits its failures."></button>
+      <button class="hs-pin" style="--x:60%;--y:40%" data-title="Not idempotent"
+              data-cap="If transform appends rather than replacing its partition, one retry doubles Daybreak's revenue. The retry is not the bug. The append is."></button>
+      <button class="hs-pin" style="--x:85%;--y:22%" data-title="The SLA nobody checks"
+              data-cap="05:10 is a promise only if something is watching the clock and paging when it passes. Written on a wiki, it is a sentence. Written in the orchestrator, it is an alarm."></button>
+    </div>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers idempotency</span>
+      <h2>Idempotency is what makes "just run it again" a boring sentence</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">Every retry, every backfill and every manual re-run in your future depends on one property: running it twice produces the same result as running it once. Get this wrong and your recovery mechanism is a corruption mechanism.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An append-based load doubling revenue on a retry compared with a partition-replace load that is safe to re-run">
+        <style>
+          .s4iH { font: 800 13px Inter, sans-serif; }
+          .s4iB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s4iN { font: 400 12px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <rect x="40" y="40" width="390" height="184" rx="12" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5"/>
+        <text class="s4iH" x="58" y="72" fill="#991B1B">✗ INSERT INTO fact_orders</text>
+        <text class="s4iB" x="58" y="102">Run 1 · 18,000 rows · $412,000</text>
+        <text class="s4iB" x="58" y="124">Timeout on the write. Retry fires</text>
+        <text class="s4iB" x="58" y="146">Run 2 · 18,000 rows appended again</text>
+        <text class="s4iB" x="58" y="176" fill="#991B1B">Total: 36,000 rows · $824,000</text>
+        <text class="s4iN" x="58" y="200">Nothing errored. The board pack is wrong</text>
+
+        <rect x="450" y="40" width="390" height="184" rx="12" fill="#EEF6FB" stroke="#0C4A6E" stroke-width="1.5"/>
+        <text class="s4iH" x="468" y="72" fill="#08324A">✓ DELETE partition, then INSERT</text>
+        <text class="s4iB" x="468" y="102">Run 1 · partition 2026-08-25 written</text>
+        <text class="s4iB" x="468" y="124">Timeout on the write. Retry fires</text>
+        <text class="s4iB" x="468" y="146">Run 2 · same partition replaced</text>
+        <text class="s4iB" x="468" y="176" fill="#08324A">Total: 18,000 rows · $412,000</text>
+        <text class="s4iN" x="468" y="200">Run it five times. Same answer</text>
+
+        <text class="s4iN" x="40" y="258">The unit of idempotency is the partition. Pick it in the design, not when the retry fails.</text>
+        <text class="s4iN" x="40" y="280">Everything downstream of a non-idempotent write inherits the problem.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the retry did what it was told, which is why the design has to make that safe</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Three ways to get idempotency, in order of preference<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Replace a partition.</strong> The run owns a time slice and rewrites it whole. Simplest to reason about, easiest to backfill, and it is what you should reach for unless something prevents it.</li>
+          <li><strong>Merge on a key.</strong> Upsert by a natural or surrogate key. Correct, slightly more expensive, and it needs a key you genuinely trust to be unique - which is a contract question from session 2.</li>
+          <li><strong>Deduplicate on read.</strong> Write freely, resolve duplicates in the query. Sometimes the only option with an append-only source, but it moves the cost to every reader forever, and readers forget.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">The design rule</span>
+          <p>Write down the <strong>unit of work</strong> for every node in the graph: "one calendar day of orders", "one hour of events". If two nodes disagree about the unit, backfilling one of them will silently half-fill the other. This is the most common cause of a backfill that looks like it worked.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Task-centric versus asset-centric orchestration<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Two shapes, and the difference is what the graph's nodes are.</p>
+        <ul>
+          <li><strong>Task-centric</strong> (the classic Airflow shape). Nodes are things to do. "Run this script, then that one." Flexible, familiar to anyone who has written a shell pipeline, and the graph knows nothing about what the tasks produce. Freshness questions have to be answered outside it.</li>
+          <li><strong>Asset-centric</strong> (the Dagster shape). Nodes are things that exist - tables, files, models. The graph knows that <span class="mono">fact_orders</span> exists, when it was last materialized, and what it depends on. "Which assets are stale" becomes a question the system can answer rather than one you ask a person.</li>
+        </ul>
+        <p>Neither is correct in general. The useful test: <strong>how often do you need to know whether a specific table is currently trustworthy?</strong> If that question comes up weekly, the asset shape is doing work for you. If your pipeline is five steps and one output, the task shape is less machinery for the same result.</p>
+        <p>The product docs own the click-through. What this session owns is the choice, and the choice is about which question you ask most.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Backfills, late-arriving data and the reprocessing window<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three design decisions people make by accident and then live with for years:</p>
+        <ul>
+          <li><strong>How far back can you reprocess?</strong> If raw data is retained for 30 days, your maximum backfill is 30 days, and you have just capped your ability to fix any error older than a month. That is a design decision whether or not anyone made it deliberately.</li>
+          <li><strong>What happens to a record that arrives three days late?</strong> Does it land in the partition of the day it happened, or the day it arrived? Both are defensible. Only one of them is written down, and the other one produces a permanent quiet discrepancy with finance.</li>
+          <li><strong>Can a backfill run alongside the normal schedule?</strong> If not, every correction is an outage, and people will avoid correcting things.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Draw Daybreak's graph, then write one promise on it</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Five nodes, two sources, two marts. You are going to write the unit of work and the promise for each one, and then grade the whole document you have been building since session 1.</p>
+
+    <div class="tick" data-stages="Nodes|Edges|Units|Promises|Recovery" data-title="Building the topology, in five passes" data-foot="Do all five for one real graph. The fifth is the one people skip and the one that gets tested at 04:00.">
+      <p class="tick-note" data-stage="0"><b>Nodes.</b> Name the things that exist, not the scripts that run. "fact_orders", "revenue mart", "staging orders". If a node's name is a verb, you are drawing a task graph by accident.</p>
+      <p class="tick-note" data-stage="1"><b>Edges.</b> Draw them from what a node reads, not from what order things happened to be built in. Every edge you draw is a blast-radius path, and every one you can delete is worth deleting.</p>
+      <p class="tick-note" data-stage="2"><b>Units.</b> One calendar day, one hour, one full snapshot. Write it on every node. Two adjacent nodes with different units is a bug waiting for a backfill.</p>
+      <p class="tick-note" data-stage="3"><b>Promises.</b> A clock time and a business-day qualifier on the nodes people actually depend on. "Revenue mart, correct and complete by 05:10 on business days." Two or three promises, not twenty.</p>
+      <p class="tick-note" data-stage="4"><b>Recovery.</b> For each node: what does a re-run do, how far back can you go, and who is allowed to press it. If the answer to the last one is "one person, and they are on holiday", that is your real availability number.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><p><strong>Draw your own graph as nouns.</strong> Five to ten nodes. Do it on paper. If you cannot fit it on one page, that is a finding about the system, not about the page.</p></div>
+      <div class="step"><p><strong>Circle the shared node.</strong> The one with the most inbound and outbound edges. That is your highest-blast-radius asset, and it should be the best tested thing you own. Usually it is the least tested.</p></div>
+      <div class="step"><p><strong>Write the unit of work on every node.</strong> Then check two adjacent nodes for disagreement. Roughly a third of real graphs have one, and it is invisible until a backfill.</p></div>
+      <div class="step"><p><strong>Write exactly one promise, with a clock time.</strong> Then go and check whether it is currently true over the last 14 runs. This is the highest-value 20 minutes in the homework.</p></div>
+      <div class="step"><p><strong>Test one write for idempotency, on paper.</strong> If this ran twice, what is in the table? If the answer is "twice as much", you have found the corruption mechanism before it found you.</p></div>
+      <div class="step"><p><strong>Now grade your design doc below.</strong> It is meant to be half-finished - you are four sessions in. The scorecard is looking for whether the bones are honest, not whether it is complete.</p></div>
+    </div>
+
+    <div class="scorecard" data-title="Halfway scorecard: your design doc at session 4" data-foot="Half-finished is the correct state. What matters is whether the parts that exist are honest and specific.">
+      <div class="sc-row"><div class="sc-q">Your four meters have units and numbers, not adjectives
+        <em>"p95 under 2 seconds" rather than "fast". A guess with a named owner counts.</em></div></div>
+      <div class="sc-row"><div class="sc-q">The problem block contains no technology words
+        <em>Two sentences about who is hurting and when. If a product name appears, it is a solution block wearing a problem block's clothes.</em></div></div>
+      <div class="sc-row"><div class="sc-q">At least one option you are rejecting is written fairly
+        <em>Good enough that its advocate would recognise it. This is the part reviewers test.</em></div></div>
+      <div class="sc-row"><div class="sc-q">The consequence sentence names what got worse
+        <em>Freshness, cost, complexity, something. A decision with no downside is a decision you have not finished analysing.</em></div></div>
+      <div class="sc-row"><div class="sc-q">Every published boundary has an owner who can be woken up
+        <em>A team and a rota, not an individual. From session 2, and the thing session 5 is about to lean on hard.</em></div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>If you take one thing from tonight.</strong> Add one data SLA with a clock time to something people depend on, and make something watch it. Nearly every quiet data failure is an expectation that existed in people's heads and nowhere in the system.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 5</h2>
+      <span class="tag exercise">30 min</span>
+    </div>
+    <ol>
+      <li><strong>Draw your real graph as nouns, on one page.</strong> Bring it to session 5 - the simulator's blast-radius meter will mean much more if you have a picture of your own graph in your head.</li>
+      <li><strong>Check one promise against 14 real runs.</strong> What time does your most depended-on table actually land? Compare against what everybody believes. Write down both numbers.</li>
+      <li><strong>Find one non-idempotent write.</strong> There is at least one. Work out what a double run would do, and how you would notice.</li>
+      <li><strong>Answer the late-data question in writing.</strong> A record arrives three days late. Which partition does it land in, and is that written down anywhere? If it is not, you have just found a permanent quiet discrepancy.</li>
+      <li><strong>Note your maximum backfill window.</strong> How far back can you reprocess, given what you retain? That number is a cap on every future correction.</li>
+    </ol>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 4 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · The upstream extract takes 80 minutes instead of its usual 40. Under a fixed cron schedule, what happens?</p>
+      <button class="qopt" type="button">A · The downstream job fails and pages someone</button>
+      <button class="qopt" type="button">B · The downstream job waits, because it can see the file is incomplete</button>
+      <button class="qopt" type="button">C · The downstream job runs on time against stale or partial input, exits successfully, and reports success</button>
+      <p class="qwhy">Cron knows what time it is, not what finished. The job did what it was told. Nothing in the run produced an error, which is precisely why this failure is discovered by a human reading a wrong number rather than by an alert.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · A load times out after writing, and the retry fires. Which design makes that safe?</p>
+      <button class="qopt" type="button">A · The run owns a partition and replaces it whole, so a second run produces the same table as the first</button>
+      <button class="qopt" type="button">B · Appending, then adding an alert on unusual row counts</button>
+      <button class="qopt" type="button">C · Disabling retries on any job that writes data</button>
+      <p class="qwhy">Partition replace is the simplest idempotency to reason about and the easiest to backfill. An alert catches the damage after the fact. Disabling retries removes your recovery mechanism because a write was designed badly - fix the write.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">3 · What makes an asset-centric orchestrator worth its extra machinery?</p>
+      <button class="qopt" type="button">A · It runs faster than a task-centric one</button>
+      <button class="qopt" type="button">B · The graph knows what exists and when it was last materialized, so "which tables are currently stale" is a query rather than a conversation</button>
+      <button class="qopt" type="button">C · It removes the need to write idempotent loads</button>
+      <p class="qwhy">Nodes are things that exist rather than things to do. If you frequently need to know whether a specific table is trustworthy right now, the asset shape answers it. If your pipeline is five steps and one output, it is machinery you do not need yet.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ OFFICIAL COVERAGE ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Cron versus dependency-aware orchestration</span><span class="note">Worked on a real late-extract scenario where nothing errors. Worth 16 points of blast radius and $150 a month on the session 5 board</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Idempotency as a design property</span><span class="note">Partition replace, merge on key, deduplicate on read - in order of preference, with the doubled-revenue failure shown explicitly</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Units of work and the backfill trap</span><span class="note">Adjacent nodes with different units silently half-fill during a backfill. The most common cause of a backfill that appears to have worked</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">SLAs written on data</span><span class="note">A clock time plus a business-day qualifier, checked by the orchestrator rather than believed by people</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Task-centric versus asset-centric shapes</span><span class="note">Airflow's DAG-of-tasks against Dagster's DAG-of-assets, decided by how often you need to know if a table is trustworthy</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Airflow and Dagster product specifics</span><span class="note">Operators, sensors, resources and the UI stay with the vendor docs. This session owns the choice between the two shapes</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Full source map with every URL: <span class="mono">materials/official-course-map.md</span> in this repo. Certificates, videos and assessments stay with the official providers.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 4 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The sentence</b><span>Cron knows what time it is. An orchestrator knows what finished.</span></div>
+      <div class="cheat-item"><b>Late beats wrong</b><span>Late and correct is a visible incident. On time and wrong is an invisible one.</span></div>
+      <div class="cheat-item"><b>Nodes are nouns</b><span>If a node's name is a verb, you drew a task graph by accident. Edges are blast-radius paths.</span></div>
+      <div class="cheat-item"><b>Unit of work</b><span>Write it on every node. Two adjacent nodes disagreeing is a backfill that half-works.</span></div>
+      <div class="cheat-item"><b>Partition replace first</b><span>Then merge-on-key, then dedupe-on-read. The last one taxes every reader forever.</span></div>
+      <div class="cheat-item"><b>A promise needs a clock</b><span>"Correct by 05:10 on business days", watched by the system. On a wiki it is just a sentence.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>Halfway. You have requirements, boundaries, a store and a topology - four decisions, each of which spent something. Session 5 puts all nine levers on one board with all four meters live, and asks the question the whole course has been building to: <strong>is this architecture correct?</strong> The answer turns out to depend entirely on a requirement you can change with one click, without touching a single lever.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 4 of 8 · learn-system-design-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="03-storage-and-serving.html">← Previous</a> &nbsp;·&nbsp; <a href="05-designing-for-failure.html">Next: Designing for failure →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=2"></script>
+</body>
+</html>

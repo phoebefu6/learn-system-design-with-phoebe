@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 5 of 8. The tradeoff board: nine levers, four meters, two requirements - and the moment where switching the requirement without touching a lever flips the verdict. Plus: retries do not fix a contract break.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Designing for failure - learn system design with phoebe">
+<meta property="og:description" content="Session 5 of 8. Nine levers, four meters, two requirements. There is no best architecture.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/courses/05-designing-for-failure.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Designing for failure - learn system design with phoebe">
+<meta name="twitter:description" content="Session 5 of 8. The tradeoff board, and why the same lever is right and wrong.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 5 · Designing for failure - learn system design with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-system-design-with-phoebe</a> / Session 5 of 8</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn System Design with Phoebe · Session 5 of 8</div>
+    <h1>Designing for <span class="accent">failure</span></h1>
+    <p class="sub">Tonight the four meters go on one board together and start fighting in public. Nine levers, every one of them spending something to buy something else, and a verdict line that tells you whether the architecture you just built is correct. Then the part that makes the whole course click: you change the requirement without touching a single lever, and the verdict flips. There is no best architecture. There is only an architecture that is correct for a requirement, and the requirement is a thing somebody said in a meeting.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Hands-on</span>
+      <span class="chip audience">The simulator session - bring your own graph from session 4</span>
+      <span class="chip audience">Everything runs in your browser</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Blast radius, and transient versus permanent</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: the tradeoff board</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are</h2>
+    </div>
+    <p class="lede">Four sessions, four decisions, each one made in isolation. Tonight they are all on the same board with the same budget, which is the first time you find out whether they add up.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A verdict on Daybreak's architecture against two different requirements, a written answer to "what happens when this fails" that does not bluff, and the single most useful sentence in this course: <strong>retries do not fix a contract break.</strong></p>
+    </div>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers blast radius</span>
+      <h2>Blast radius is a number, and most people carry it as a feeling</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">"If this breaks, quite a lot of stuff breaks" is not a design input. Count the assets. Daybreak has 42 downstream tables, dashboards and models, and on day one a single upstream change reaches 82 percent of them.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Blast radius falling from 82 percent to 4 percent of 42 assets as isolation levers are added one at a time">
+        <style>
+          .s5bL { font: 600 12px Inter, sans-serif; fill: #14202A; }
+          .s5bV { font: 800 12px Inter, sans-serif; fill: #fff; }
+          .s5bD { font: 800 12px Inter, sans-serif; fill: #14202A; }
+          .s5bN { font: 400 12px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <text class="s5bL" x="250" y="52" text-anchor="end">Day one</text>
+        <rect x="266" y="36" width="492" height="24" rx="5" fill="#991B1B"/>
+        <text class="s5bV" x="278" y="53">82%</text>
+
+        <text class="s5bL" x="250" y="90" text-anchor="end">+ read replica</text>
+        <rect x="266" y="74" width="456" height="24" rx="5" fill="#B91C1C"/>
+        <text class="s5bV" x="278" y="91">76%</text>
+
+        <text class="s5bL" x="250" y="128" text-anchor="end">+ warehouse</text>
+        <rect x="266" y="112" width="372" height="24" rx="5" fill="#C2410C"/>
+        <text class="s5bV" x="278" y="129">62%</text>
+
+        <text class="s5bL" x="250" y="166" text-anchor="end">+ contracts in CI</text>
+        <rect x="266" y="150" width="168" height="24" rx="5" fill="#F0A202"/>
+        <text class="s5bD" x="278" y="167">28%</text>
+
+        <text class="s5bL" x="250" y="204" text-anchor="end">+ retries and DLQ</text>
+        <rect x="266" y="188" width="96" height="24" rx="5" fill="#1B6E9C"/>
+        <text class="s5bV" x="278" y="205">16%</text>
+
+        <text class="s5bL" x="250" y="242" text-anchor="end">+ orchestrator</text>
+        <rect x="266" y="226" width="24" height="24" rx="5" fill="#0C4A6E"/>
+        <text class="s5bD" x="300" y="243">4%</text>
+
+        <text class="s5bN" x="60" y="286">One lever, contracts in CI, does 34 of the 78 points. It costs $60 a month.</text>
+        <text class="s5bN" x="60" y="306">The floor is 4 percent. Nothing is ever fully isolated, and a design that claims otherwise is lying.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the cheapest lever on the board does the most work, which is why it is worth arguing for</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Transient or permanent: the distinction that decides everything<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Every failure is one of two kinds, and every mechanism in your toolkit handles exactly one of them. Getting this backwards is why so many systems have elaborate resilience and still go down.</p>
+        <ul>
+          <li><strong>Transient.</strong> A timeout, a throttle, a node that went away, a lock that was held too long. The same request, sent again in ten seconds, succeeds. Retries, backoff and dead-letter queues exist entirely for this class.</li>
+          <li><strong>Permanent.</strong> A renamed column, a bad credential, a schema that no longer parses, a definition that changed. The same request, sent again in ten seconds, fails identically. Retrying is not recovery, it is repetition with extra logging.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">The line worth quoting in a review</span>
+          <p><strong>Retries do not fix a contract break. They just fail five times.</strong> If someone proposes resilience for a class of failure that is permanent, the correct answer is not more retries - it is contracts, validation, or a circuit that stops trying and tells a human.</p>
+        </div>
+        <p>You can test this on the board below in about fifteen seconds: switch on retries, leave contracts off, and ship the schema change. Seventeen assets still break.</p>
+      </div>
+    </details>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four resilience mechanisms mapped to the failure class each one actually handles">
+        <style>
+          .s5mH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+          .s5mB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s5mN { font: 400 11.5px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <rect x="40" y="30" width="386" height="70" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s5mH" x="58" y="54">Retry with backoff</text>
+        <text class="s5mB" x="58" y="76">handles: timeouts, throttles, brief outages</text>
+        <text class="s5mN" x="58" y="94">does nothing for: anything permanent</text>
+
+        <rect x="454" y="30" width="386" height="70" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s5mH" x="472" y="54">Dead-letter queue</text>
+        <text class="s5mB" x="472" y="76">handles: the poison message, without blocking</text>
+        <text class="s5mN" x="472" y="94">does nothing for: a queue nobody ever reads</text>
+
+        <rect x="40" y="114" width="386" height="70" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+        <text class="s5mH" x="58" y="138">Circuit breaker</text>
+        <text class="s5mB" x="58" y="160">handles: a dependency that is down, cheaply</text>
+        <text class="s5mN" x="58" y="178">turns a slow cascade into a fast, honest error</text>
+
+        <rect x="454" y="114" width="386" height="70" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+        <text class="s5mH" x="472" y="138">Bulkhead</text>
+        <text class="s5mB" x="472" y="160">handles: one tenant or job eating the pool</text>
+        <text class="s5mN" x="472" y="178">separate pools, so one bad neighbour is contained</text>
+
+        <rect x="40" y="198" width="800" height="72" rx="10" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5"/>
+        <text class="s5mH" x="58" y="224" fill="#991B1B">None of the four handles a schema or definition change.</text>
+        <text class="s5mB" x="58" y="248">That failure class is handled at the boundary, in session 2, by a contract in CI.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - four mechanisms, one failure class each, and a gap that resilience cannot close</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ DEMO ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>The tradeoff board</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Nine levers, four meters, two requirement profiles. Every meter has a budget and the budget comes from the requirement at the top. Start with everything off and work up the ladder. Then, at the end, change one thing that is not a lever.</p>
+
+    <div id="sysdesign-live"></div>
+
+    <div class="tick" data-stages="Day one|Replica|Warehouse|Incremental|Marts|Contracts|Retries|Orchestrator" data-title="The ladder, rung by rung, on the morning-dashboard requirement" data-foot="These are the exact numbers the board produces. Add the levers in this order and check each rung as you go.">
+      <p class="tick-note" data-stage="0"><b>9,400 ms · $1,180 · 5 min old · 82% · 2 of 4 budgets.</b> Daybreak on day one. Note that it already passes the freshness budget by a mile, because it is production. It fails latency and blast radius badly.</p>
+      <p class="tick-note" data-stage="1"><b>5,170 ms · $1,440 · 7 min · 76% · 2 of 4.</b> A read replica for $260 removes 4,230 ms of lock contention. The verdict has not moved yet, but 45 percent of the latency has.</p>
+      <p class="tick-note" data-stage="2"><b>1,551 ms · $1,860 · 1,440 min · 62% · 2 of 4.</b> The column store takes latency inside budget and simultaneously blows the freshness budget entirely. You just traded one green meter for another. This is the honest shape of the decision.</p>
+      <p class="tick-note" data-stage="3"><b>1,551 ms · $2,040 · 18 min · 62% · 3 of 4.</b> Incremental loading buys the freshness straight back for $180. Three of four. Only blast radius is still red.</p>
+      <p class="tick-note" data-stage="4"><b>543 ms · $2,180 · 24 min · 62% · 3 of 4.</b> Marts for $140 take another 1,008 ms off. Remember this number when you meet the trap lever.</p>
+      <p class="tick-note" data-stage="5"><b>543 ms · $2,240 · 24 min · 28% · 3 of 4.</b> Contracts for $60 remove 34 points of blast radius in one move. Still not inside the 20 percent budget, but nothing else on the board trades like this.</p>
+      <p class="tick-note" data-stage="6"><b>543 ms · $2,330 · 27 min · 16% · 4 of 4.</b> Retries and idempotency take blast radius inside budget. All four meters green. On this requirement, this architecture is correct.</p>
+      <p class="tick-note" data-stage="7"><b>543 ms · $2,480 · 23 min · 4% · 4 of 4.</b> The orchestrator is the only lever that improves two meters at once - blast radius down 16, freshness better by 4 minutes, because work stops waiting for a fixed clock gap.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><p><strong>Climb the ladder in order.</strong> Switch the levers on one at a time, top to bottom, and read the verdict line after each. You are looking for the two moments where a meter goes red - they are the two real decisions in the whole architecture.</p></div>
+      <div class="step"><p><strong>Stop at the warehouse rung and sit with it.</strong> Latency went green and freshness went red in the same click. Every "modernise the platform" project contains this moment, and most design documents do not mention it.</p></div>
+      <div class="step"><p><strong>Now the trap. Turn everything off and switch on "just buy a bigger box" alone.</strong> Then compare it against marts alone. The box costs $980 and takes 1,692 ms off. Marts cost $140 and take 6,110 ms off. Seven times the money, a quarter of the result, and no other meter moves at all.</p></div>
+      <div class="step"><p><strong>Get to 4 of 4 on the morning dashboard.</strong> Every design lever on, streaming off, box off. $2,480 a month and all four green. Write that configuration down.</p></div>
+      <div class="step"><p><strong>Now change nothing and click "Minute alerting".</strong> The same architecture drops to 3 of 4. Nothing about the system got worse. Somebody in a meeting said the word "alerting" and one budget moved from 12 hours to 5 minutes.</p></div>
+      <div class="step"><p><strong>Fix it for the new requirement.</strong> Switch on streaming: 4 of 4 again, at $3,380. Now click back to the morning dashboard with streaming still on - 3 of 4, because you are $580 over a budget that exists for a dashboard four people read. <strong>The same lever is correct and incorrect, and only the requirement decided which.</strong></p></div>
+      <div class="step"><p><strong>Run the failure drill three ways.</strong> With contracts on. With everything off. Then with orchestrator, retries and incremental on but contracts off. Read that last result carefully - 17 assets break, the retries fire five times, and the retries were never going to help.</p></div>
+      <div class="step"><p><strong>Write the honest paragraph.</strong> "When the upstream schema changes, N assets break, we find out in M minutes, and the mechanism that catches it is X." If you cannot fill in all three, that is the gap in your design, not a gap in the exercise.</p></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>If you take one thing from tonight.</strong> "Is this a good architecture" is not a question. "Is this correct for this requirement, and what does it cost when the requirement changes" is two questions, both answerable, and both of them are what a design review is actually for.</p>
+    </div>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers measuring it</span>
+      <h2>How you know whether the failure design is working</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">A design that is resilient on paper and unmeasured in production is a belief. Four numbers turn it into a fact, and they are the same four numbers your engineering organisation is probably already arguing about.</p>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The DORA four keys, read as design feedback<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>Metric</th><th>What it tells a designer</th></tr>
+          <tr><td>Deployment frequency</td><td>How small your changes are. Big infrequent changes are a blast-radius decision made by process rather than by architecture</td></tr>
+          <tr><td>Lead time for changes</td><td>How much friction sits between deciding and shipping. Often it is a boundary problem, not a pipeline problem</td></tr>
+          <tr><td>Change failure rate</td><td>The direct read on your isolation. Elite performers sit near 5 percent</td></tr>
+          <tr><td>Failed deployment recovery time</td><td>Whether your rollback is real. If nobody has used it this quarter, it is a diagram</td></tr>
+        </table>
+        <p>The 2025 DORA report replaced the old four performance tiers with seven team profiles, on the argument that a single ranking hid too much about culture and constraints. The metrics themselves survived, and change failure rate remains the most direct feedback you get on whether your boundaries are real.</p>
+        <div class="callout tip">
+          <p>Chaos engineering belongs here and is out of scope for this course: it is the practice of testing the failure design deliberately rather than waiting. If you have never done it, start with the smallest honest version - turn off one non-critical dependency in a staging environment and see whether the alerts you believe in actually fire.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Silent failure is the expensive failure<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Rank your failure modes by how long they stay invisible, not by how dramatic they are:</p>
+        <ul>
+          <li><strong>Loud and instant.</strong> The pipeline crashes, the page 500s. Found in minutes, fixed the same day. The cheapest failure you can have.</li>
+          <li><strong>Loud and delayed.</strong> The nightly load fails at 02:00 and pages someone at 04:12. Found before the business sees it, if the alert is real.</li>
+          <li><strong>Silent and bounded.</strong> One partition is wrong. Found when someone queries that date range. Weeks, sometimes.</li>
+          <li><strong>Silent and unbounded.</strong> A definition changed. Every number since the change is subtly wrong, decisions have been made on them, and the discovery is somebody's spreadsheet not tying out. This is the one that ends up in a board meeting.</li>
+        </ul>
+        <p>The design instinct that follows: <strong>prefer failures that are loud.</strong> A job that refuses to write anything when the row count is 40 percent below the trailing median is choosing a loud failure over a silent one on purpose, and that is a good trade almost every time.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 6</h2>
+      <span class="tag exercise">30 min</span>
+    </div>
+    <ol>
+      <li><strong>Count your assets.</strong> How many tables, dashboards and models are downstream of your single most-depended-on input? That count is your blast-radius denominator and most people have never had it.</li>
+      <li><strong>Classify your last five incidents.</strong> Transient or permanent. Then check what mechanism you have for each class. The mismatch is usually the finding.</li>
+      <li><strong>Write the honest paragraph.</strong> "When X changes upstream, N assets break, we find out in M minutes, and the mechanism is Y." One paragraph, real numbers.</li>
+      <li><strong>Find one silent-and-unbounded risk.</strong> A definition, a unit, a currency, a timezone. Something where a change would pass every check you have. Write down how you would catch it.</li>
+      <li><strong>Run your own profile flip.</strong> Take your design and ask what would have to change if the freshness requirement went from a day to five minutes. If the answer is "everything", you have found out how much your architecture depends on a sentence somebody said once.</li>
+    </ol>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 5 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · With retries, a dead-letter queue and an orchestrator all switched on, an upstream team renames a column. What happens?</p>
+      <button class="qopt" type="button">A · The retries succeed on the second attempt once the change propagates</button>
+      <button class="qopt" type="button">B · The dead-letter queue captures the records and the load completes</button>
+      <button class="qopt" type="button">C · Seventeen of 42 assets still break, and the retries fail five identical times, because a rename is permanent rather than transient</button>
+      <p class="qwhy">Retries, DLQs, circuit breakers and bulkheads all handle transient failures. A renamed column fails identically on every attempt. The only mechanism that catches this class is a contract in the producer's CI, which is why it sits on the board as its own lever.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">2 · The full design-lever set scores 4 of 4 on the morning dashboard and 3 of 4 on minute alerting. What does that tell you?</p>
+      <button class="qopt" type="button">A · The architecture is incomplete and needs another lever</button>
+      <button class="qopt" type="button">B · Nothing about the architecture is better or worse - the requirement changed, and correctness is defined against a requirement</button>
+      <button class="qopt" type="button">C · Minute alerting is an unrealistic requirement for a company this size</button>
+      <p class="qwhy">Not a single lever moved between those two verdicts. One budget went from 12 hours to 5 minutes because somebody described a different use case. This is why every design review starts with the requirement, and why "what is the best architecture" has no answer.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Buying a bigger box costs $980 a month and takes 1,692 ms off p95. Marts cost $140 and take 6,110 ms off. Why does the bigger box keep getting proposed?</p>
+      <button class="qopt" type="button">A · It requires no design work and no argument with anyone, which are real costs that do not appear on the board</button>
+      <button class="qopt" type="button">B · It performs better under peak load than marts do</button>
+      <button class="qopt" type="button">C · It improves blast radius as well as latency</button>
+      <p class="qwhy">It moves exactly one meter and moves it least per dollar. It keeps winning because it is the only option that requires nobody to change anything. Naming that honestly in a review is more persuasive than the arithmetic alone, because it is the actual reason.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ OFFICIAL COVERAGE ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Blast radius as a measured meter</span><span class="note">42 assets, 82 percent to 4 percent across the lever ladder. Contracts alone do 34 of the 78 points for $60 a month</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Transient versus permanent failure</span><span class="note">The distinction that determines which mechanism helps. Demonstrated live: retries fire five times against a rename and change nothing</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Retries, DLQ, circuit breakers, bulkheads</span><span class="note">Each mapped to the failure class it handles, with the gap that none of them close</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The requirement-profile flip</span><span class="note">Identical architecture, two verdicts. The core teaching move of the whole course</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">DORA four keys</span><span class="note">Deployment frequency, lead time, change failure rate, failed deployment recovery time, read as design feedback. Elite change failure rate near 5 percent; the 2025 report replaced four tiers with seven team profiles</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Chaos engineering</span><span class="note">Named as the practice that tests the failure design, with the smallest honest starting point. Running a programme is out of scope</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Every simulator constant is listed in <span class="mono">materials/official-course-map.md</span>. The board is a teaching model calibrated to make the shape of each trade visible - it is not a benchmark of your platform, and the page says so on the board itself.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 5 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The sentence</b><span>Retries do not fix a contract break. They just fail five times.</span></div>
+      <div class="cheat-item"><b>Blast radius is a count</b><span>42 assets. 82 percent on day one, 4 percent at the floor. Not "quite a lot of stuff".</span></div>
+      <div class="cheat-item"><b>The flip</b><span>4 of 4 on a dashboard, 3 of 4 on alerting, zero levers changed. The requirement is the architecture.</span></div>
+      <div class="cheat-item"><b>The trap</b><span>Bigger box: $980 for 1,692 ms and nothing else. Marts: $140 for 6,110 ms.</span></div>
+      <div class="cheat-item"><b>Prefer loud failures</b><span>Refuse to write when the row count drops 40 percent. A visible stop beats a quiet wrong number.</span></div>
+      <div class="cheat-item"><b>Change failure rate</b><span>The most direct read on whether your boundaries are real. Elite sits near 5 percent.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>The board has four meters on it. Session 6 is about the fifth thing, the one that has no meter and shows up as a letter from a regulator instead: who can see what, where the personal data went, how you would delete it, and who is actually paying for all this. <strong>Every copy of the data is a new obligation</strong>, and deletion is the one property you cannot retrofit.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 5 of 8 · learn-system-design-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="04-orchestration-topology.html">← Previous</a> &nbsp;·&nbsp; <a href="06-the-governed-shell.html">Next: The governed shell →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=2"></script>
+<script src="../assets/sysdesign-live.js?v=2"></script>
+</body>
+</html>

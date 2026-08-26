@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 6 of 8. Access, lineage, PII boundaries, retention, deletion and cost attribution - designed at the boundary rather than bolted on, because deletion cannot be retrofitted into a lake.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="The governed shell - learn system design with phoebe">
+<meta property="og:description" content="Session 6 of 8. Every copy of the data is a new obligation, and deletion is the property you cannot retrofit.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/courses/06-the-governed-shell.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The governed shell - learn system design with phoebe">
+<meta name="twitter:description" content="Session 6 of 8. Access, lineage, PII boundaries, deletion and who is actually paying.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 6 · The governed shell - learn system design with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-system-design-with-phoebe</a> / Session 6 of 8</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn System Design with Phoebe · Session 6 of 8</div>
+    <h1>The governed <span class="accent">shell</span></h1>
+    <p class="sub">The four meters on the session 5 board do not have a light for this one. Governance failures do not show up as latency or cost, they show up as a letter, an audit finding, or the discovery that nobody can answer a customer asking what you hold about them. Tonight: access designed at the boundary, lineage as an output rather than a documentation project, deletion as a property you have to design in because it cannot be added later, and the quiet one that kills platforms - nobody knows who is paying.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Hands-on</span>
+      <span class="chip audience">Anyone whose platform holds data about people</span>
+      <span class="chip audience">No regulation expertise assumed</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Access, the copy problem, lineage</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: Daybreak's PII surface and its bill</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are, and what this session is not</h2>
+    </div>
+    <p class="lede">This is not a compliance course. It does not teach you PDPA, GDPR or the EU AI Act - those have their own courses on this shelf and they are better at it. What this session teaches is the <strong>architectural</strong> half: the five design decisions that make compliance possible or impossible, all of which are made long before anybody from legal is in the room.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A count of how many places Daybreak's customer email exists, a lineage answer to "what breaks if I change this", a deletion design that would actually work, and an owner attached to every dollar on the bill.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The framing: governance is a design property, not a policy document<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Almost every governance failure you will meet is an architecture decision that was made silently and correctly according to the constraints in the room at the time. Somebody copied a table to unblock a report. Somebody granted a role because a person needed it on a Friday. Nobody wrote anything down and nothing broke.</p>
+        <p>The useful mental model: <strong>every copy of personal data is a new obligation with the same expiry date and none of the same controls.</strong> A design that produces copies faster than it produces controls is producing liability at a predictable rate, and the rate is visible on a diagram if anyone draws one.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers access and copies</span>
+      <h2>Access at the boundary, and the copy problem behind it</h2>
+      <span class="tag concept">7 min live</span>
+    </div>
+    <p class="lede">Access control that lives on individual tables is a permanent maintenance job. Access control that lives at a boundary is a design. The difference is whether a new table inherits a rule or needs a decision.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Access granted per table growing unmanageable compared with access granted at a boundary where new assets inherit the rule">
+        <style>
+          .s6aH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+          .s6aB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s6aN { font: 400 11.5px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <rect x="40" y="30" width="386" height="216" rx="12" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5"/>
+        <text class="s6aH" x="58" y="56" fill="#991B1B">✗ Grants per table</text>
+        <text class="s6aB" x="58" y="84">42 assets x 6 roles = 252 decisions</text>
+        <text class="s6aB" x="58" y="108">Every new table needs a fresh one</text>
+        <text class="s6aB" x="58" y="132">A missed grant is a broken report</text>
+        <text class="s6aB" x="58" y="156">An extra grant is invisible forever</text>
+        <text class="s6aN" x="58" y="188">Nobody can answer "who can see emails"</text>
+        <text class="s6aN" x="58" y="212">without reading 252 grants one at a time</text>
+
+        <rect x="454" y="30" width="386" height="216" rx="12" fill="#EEF6FB" stroke="#0C4A6E" stroke-width="1.5"/>
+        <text class="s6aH" x="472" y="56">✓ Grants at a boundary</text>
+        <text class="s6aB" x="472" y="84">3 zones x 6 roles = 18 decisions</text>
+        <text class="s6aB" x="472" y="108">A new table lands in a zone and inherits</text>
+        <text class="s6aB" x="472" y="132">Raw zone: pipeline identities only</text>
+        <text class="s6aB" x="472" y="156">Modeled zone: analysts, no direct PII</text>
+        <text class="s6aB" x="472" y="180">Serving zone: everyone, aggregates only</text>
+        <text class="s6aN" x="472" y="212">"Who can see emails" is one question</text>
+
+        <text class="s6aN" x="40" y="278">The zone is the unit of governance. It is also the unit of blast radius from session 5,</text>
+        <text class="s6aN" x="40" y="300">which is not a coincidence - both are asking where the boundaries actually are.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - 18 decisions you can hold in your head against 252 you cannot</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Minimization: the cheapest control is not having it<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Four moves, in order of how much trouble they save you later:</p>
+        <ul>
+          <li><strong>Do not collect it.</strong> The strongest control available and the one that requires a conversation with product rather than engineering. Every field you never collect is a field you never secure, never breach, never have to delete and never have to explain.</li>
+          <li><strong>Tokenize at the boundary.</strong> Replace the email with a stable surrogate on the way in, and keep the mapping in exactly one vault. Downstream analytics keeps working - joins are on the token - and the PII surface stops growing on its own.</li>
+          <li><strong>Aggregate early.</strong> If the serving layer only ever shows revenue by SKU by day, the serving layer does not need customer rows at all. Most warehouses hold row-level personal data to answer questions nobody has ever asked.</li>
+          <li><strong>Expire on a schedule that runs.</strong> A retention policy that is a document is a document. A retention policy that is a job with a dashboard is a control.</li>
+        </ul>
+        <div class="callout tip">
+          <p>The design test that catches most of it: <strong>ask what the serving layer would break if you removed every personal field from it right now.</strong> The honest answer is usually "one export that one team uses once a quarter", and that export is what is holding the whole surface open.</p>
+        </div>
+      </div>
+    </details>
+
+    <div class="wipe" data-title="Deletion, designed in versus retrofitted" data-label-a="Retrofitted" data-label-b="Designed in" data-foot="Drag across. The same deletion request, against two architectures that look identical on a diagram.">
+      <div class="wipe-a">
+        <p><strong>A customer asks to be deleted. The data is spread across 14 places, some of them immutable files in object storage.</strong></p>
+        <p>You can delete the row in Postgres. The warehouse holds copies in six tables. The lake holds compressed files where that customer is one row inside a 400 MB object that also contains 90,000 other people, and rewriting it breaks every downstream snapshot. Somebody proposes a quarterly manual process. It runs twice.</p>
+      </div>
+      <div class="wipe-b">
+        <p><strong>A customer asks to be deleted. Personal fields exist in exactly one vault, and everything downstream holds a token.</strong></p>
+        <p>You delete the vault entry. Every downstream copy is now permanently un-resolvable to a person, which is the outcome the request was asking for, and no analytical history breaks because nothing downstream ever held the email. The whole operation is one delete and an audit line.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers lineage and the bill</span>
+      <h2>Lineage is a design output, and the bill needs a name on it</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">If you cannot answer "what breaks if I change this" without asking three people, you do not have an architecture, you have a pile that happens to work.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four questions lineage answers, each mapped to the person who asks it and the cost of not being able to answer">
+        <style>
+          .s6lH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+          .s6lB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s6lN { font: 400 11.5px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <rect x="40" y="28" width="800" height="46" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s6lH" x="58" y="48">"What breaks if I change this column?"</text>
+        <text class="s6lN" x="58" y="66">asked by an engineer · answered badly, this becomes session 5's 34 broken assets</text>
+
+        <rect x="40" y="86" width="800" height="46" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s6lH" x="58" y="106">"Where did this number on the board pack come from?"</text>
+        <text class="s6lN" x="58" y="124">asked by finance · answered badly, nobody trusts the platform again for a year</text>
+
+        <rect x="40" y="144" width="800" height="46" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+        <text class="s6lH" x="58" y="164">"Everywhere this customer's data reaches?"</text>
+        <text class="s6lN" x="58" y="182">asked by a regulator or a customer · answered badly, this is a reportable finding</text>
+
+        <rect x="40" y="202" width="800" height="46" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+        <text class="s6lH" x="58" y="222">"Who is paying for this table nobody reads?"</text>
+        <text class="s6lN" x="58" y="240">asked by nobody, which is why the bill grows every quarter and never shrinks</text>
+
+        <text class="s6lB" x="40" y="278">All four are the same graph. The orchestrator from session 4 already knows most of it.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - lineage is not a documentation project, it is a by-product of running things properly</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Cost attribution, and the unowned-spend failure<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The single most reliable prediction in this field: <strong>a platform nobody is billed for is a platform nobody prunes.</strong> Storage is cheap, compute is metered, and a table that costs $40 a month and is read twice a year will sit there for a decade because deleting it is somebody's risk and keeping it is nobody's cost.</p>
+        <ul>
+          <li><strong>Tag at creation, not at audit.</strong> Every asset carries an owning team from the moment it exists. Retro-tagging is a project that gets to 60 percent and stops.</li>
+          <li><strong>Show the number to the team, monthly.</strong> Not to finance. Teams prune their own bill when they can see it and nobody prunes on a request from central.</li>
+          <li><strong>Make usage visible next to cost.</strong> "$40 a month, last queried 197 days ago" is a sentence that deletes things. "$40 a month" on its own is a sentence that gets ignored.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Daybreak, concretely</span>
+          <p>The session 5 board says the full design costs $2,480 a month. Attribution question: which of the four teams pays which part? If the answer is "the platform budget", then in eighteen months the platform budget is the only line that has grown and the only one nobody can explain. Put the marts on the team that reads them.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where the regulation actually lands on the design<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Without teaching the law, these are the four places obligations meet architecture. Each is a design decision you can make tonight.</p>
+        <table class="clean">
+          <tr><th>Obligation</th><th>The design decision it forces</th></tr>
+          <tr><td>Tell a person what you hold about them</td><td>You need lineage that resolves to a person. Tokenization plus one vault makes this a query rather than an investigation</td></tr>
+          <tr><td>Delete on request</td><td>Deletion must be designed in. Immutable files with mixed subjects make it structurally hard, which is a storage-layout decision</td></tr>
+          <tr><td>Limit purpose and retention</td><td>Zones and expiry jobs. A purpose that is not encoded in access is a purpose stated in a policy nobody enforces</td></tr>
+          <tr><td>Show who accessed what</td><td>Audit logging at the boundary, retained longer than the data itself. Cheap if designed, near-impossible to reconstruct</td></tr>
+        </table>
+        <p>For the obligations themselves: <span class="mono">learn-pdpa-dnc-with-phoebe</span>, <span class="mono">learn-gdpr-with-phoebe</span> and <span class="mono">learn-data-governance-with-phoebe</span>. This session's job is to make sure the architecture does not make them impossible.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Count Daybreak's PII surface, then shrink it</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Not a policy exercise. A counting exercise, followed by four design decisions that each remove a number of places rather than adding a number of controls.</p>
+
+    <div class="tick" data-stages="Count|Zone|Tokenize|Expire|Attribute" data-title="The governed shell, in five moves" data-foot="Every move here removes surface rather than adding process. That is the difference between a design and a policy.">
+      <p class="tick-note" data-stage="0"><b>Count the places.</b> Every table, file, export, cache, spreadsheet and notebook where a customer email exists. Daybreak's honest count is 14, and four of them are things nobody remembered until somebody searched.</p>
+      <p class="tick-note" data-stage="1"><b>Zone it.</b> Raw, modeled, serving. Three zones, six roles, 18 decisions instead of 252. New assets inherit rather than requiring a grant nobody remembers to ask for.</p>
+      <p class="tick-note" data-stage="2"><b>Tokenize at the boundary.</b> The email becomes a stable token on the way in. One vault holds the mapping. Analytics never notices, because every join it does was on the identifier anyway.</p>
+      <p class="tick-note" data-stage="3"><b>Expire on a job, not on a policy.</b> Raw events over 90 days deleted by something that runs and reports. If nobody would notice the job failing for a month, it is not a control yet.</p>
+      <p class="tick-note" data-stage="4"><b>Attribute the bill.</b> Every asset gets an owning team at creation. Show each team their own number monthly, with a last-queried date next to it.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><p><strong>Do the count for real.</strong> Pick one personal field in a system you know and list every place it exists. Include the exports and the spreadsheets - especially the exports and the spreadsheets. Almost nobody's first answer is complete.</p></div>
+      <div class="step"><p><strong>Draw your three zones.</strong> Where does raw land, where does modeled live, what does serving expose? Then check: does a brand-new table automatically fall into one, or does someone have to decide? If someone has to decide, they will forget.</p></div>
+      <div class="step"><p><strong>Answer the deletion question honestly.</strong> If a customer asked to be deleted today, what would actually happen? Walk it through. The answer is usually a manual process nobody has run, and knowing that is worth more than a policy that says otherwise.</p></div>
+      <div class="step"><p><strong>Now shrink the surface below.</strong> The meter starts at 14 places. Each design move removes some. The trap at the bottom is the single most common way a carefully governed platform quietly reopens.</p></div>
+      <div class="step"><p><strong>Look at what the trap costs.</strong> One export to a spreadsheet adds two places back, and they are the two places with no access control, no expiry, no audit and no lineage. Every governance programme in the world is losing to a CSV somewhere.</p></div>
+      <div class="step"><p><strong>Put a team name on every line of your bill.</strong> If any line says "platform", find out who reads the thing it pays for, and move it. Session 8 will ask you who is paying, and "us" is not an answer that survives.</p></div>
+    </div>
+
+    <div class="stakes" data-base="14" data-unit="places holding PII" data-lower-is-better="1" data-title="Daybreak's PII surface, in places a customer email exists" data-foot="Honest arithmetic on a counted surface, not the session 5 board. Every line removes places rather than adding controls.">
+      <label><input type="checkbox" data-delta="-4"> Tokenize at the ingest boundary, one vault holds the mapping</label>
+      <label><input type="checkbox" data-delta="-3"> Serving layer holds aggregates only, no customer rows</label>
+      <label><input type="checkbox" data-delta="-2"> Raw events expire at 90 days, by a job that reports</label>
+      <label><input type="checkbox" data-delta="-2"> Stop collecting the two fields no report has ever used</label>
+      <label><input type="checkbox" data-delta="-1"> Retire the legacy replica nobody has queried this year</label>
+      <label><input type="checkbox" data-delta="2" data-trap="1"> Export a customer list to a spreadsheet for the marketing team</label>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>If you take one thing from tonight.</strong> Count the copies. Not the controls - the copies. Governance conversations that start with controls produce documents, and governance conversations that start with a count produce deletions.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 7</h2>
+      <span class="tag exercise">30 min</span>
+    </div>
+    <ol>
+      <li><strong>Count one field's copies.</strong> Email, phone, national ID - pick one and find every place it lives. Write the number down before you look, then after. The gap between the two is the finding.</li>
+      <li><strong>Walk a deletion request end to end, on paper.</strong> Do not implement anything. Just find out what would actually happen and how long it would take.</li>
+      <li><strong>Ask your lineage question.</strong> Pick a column and try to answer "what breaks if I change this" without asking a person. How far can you get with what exists today?</li>
+      <li><strong>Find one unowned cost line.</strong> Something running that nobody is billed for. Then find out when it was last read.</li>
+      <li><strong>Find your CSV.</strong> The export that goes out of the governed zone into a spreadsheet or a shared drive. There is one. Session 7 will make the same point about a different kind of copy.</li>
+    </ol>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 6 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Why is deletion the governance property that has to be designed in rather than added later?</p>
+      <button class="qopt" type="button">A · Because deletion tools are expensive and need budget approval up front</button>
+      <button class="qopt" type="button">B · Because storage layout decides whether it is possible - one person's row inside a large immutable object shared with 90,000 others cannot be removed without rewriting history downstream</button>
+      <button class="qopt" type="button">C · Because regulators require the design to be documented before the system is built</button>
+      <p class="qwhy">It is a physical layout problem, not a tooling or paperwork problem. Tokenizing at the boundary sidesteps it entirely: delete the vault entry and every downstream copy becomes permanently un-resolvable to a person, with no analytical history broken.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">2 · Access is granted per table across 42 assets and 6 roles. What is the architectural problem?</p>
+      <button class="qopt" type="button">A · 252 independent decisions that nobody can hold in their head, where every new table needs a fresh one and an over-grant is invisible forever</button>
+      <button class="qopt" type="button">B · Per-table grants are less secure than per-zone grants at the technical level</button>
+      <button class="qopt" type="button">C · Most databases do not support that many grants efficiently</button>
+      <p class="qwhy">A per-table grant is technically identical in strength. The problem is that it does not compose: nobody can answer "who can see emails" without reading all 252, and a new asset defaults to whatever someone remembered. A zone makes new assets inherit, so the rule survives growth.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">3 · Which sentence actually gets an unused table deleted?</p>
+      <button class="qopt" type="button">A · "Please review your data assets for unused tables this quarter"</button>
+      <button class="qopt" type="button">B · "This table costs $40 a month"</button>
+      <button class="qopt" type="button">C · "This table costs $40 a month, is owned by your team, and was last queried 197 days ago"</button>
+      <p class="qwhy">Cost alone gets ignored because it is small and abstract. Cost plus an owner plus a last-read date is a specific claim about one team's money for something they have not used since March, and that is the version that produces a deletion rather than a reply.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ OFFICIAL COVERAGE ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Access control as an architecture decision</span><span class="note">Zones over per-table grants, shown as 18 decisions against 252, with inheritance as the property that survives growth</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Minimization and the copy problem</span><span class="note">Do not collect, tokenize at the boundary, aggregate early, expire on a job. Every copy is a new obligation with none of the same controls</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Deletion by design</span><span class="note">Why immutable mixed-subject storage makes deletion structurally hard, and how a token plus one vault turns it into a single delete</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Lineage as a design output</span><span class="note">Four questions, four askers, one graph - most of which the session 4 orchestrator already records</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Cost attribution</span><span class="note">Tag at creation, show teams their own number, put last-queried next to cost. The unowned-spend failure explained</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">PDPA, GDPR and the EU AI Act</span><span class="note">The obligations are stated and mapped onto design decisions, not taught. Full treatment: learn-pdpa-dnc, learn-gdpr, learn-data-governance and learn-ai-governance</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Full source map with every URL: <span class="mono">materials/official-course-map.md</span> in this repo. Certificates, videos and assessments stay with the official providers.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 6 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Count copies, not controls</b><span>Controls produce documents. A count produces deletions.</span></div>
+      <div class="cheat-item"><b>Zones, not grants</b><span>3 zones x 6 roles = 18 decisions. New assets inherit. 42 x 6 = 252 does not survive growth.</span></div>
+      <div class="cheat-item"><b>Tokenize at the boundary</b><span>One vault holds the mapping. Delete the entry and every downstream copy stops resolving to a person.</span></div>
+      <div class="cheat-item"><b>A policy is not a control</b><span>If nobody would notice the expiry job failing for a month, it is not a control yet.</span></div>
+      <div class="cheat-item"><b>Cost needs a name and a date</b><span>"$40/month, your team, last queried 197 days ago." That sentence deletes things.</span></div>
+      <div class="cheat-item"><b>The CSV always wins</b><span>One export reopens the surface with no access control, no expiry, no audit and no lineage.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>You have a governed platform. Session 7 puts a model in it, and everything you have learned gets tested by a component with non-deterministic latency, non-deterministic cost, an index that goes stale without telling anyone, and a loop that can decide to do more work. Plus the DORA 2025 finding worth arguing about: <strong>AI adoption raises throughput and instability at the same time.</strong></p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 6 of 8 · learn-system-design-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="05-designing-for-failure.html">← Previous</a> &nbsp;·&nbsp; <a href="07-ai-as-a-component.html">Next: AI as a system component →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=2"></script>
+</body>
+</html>

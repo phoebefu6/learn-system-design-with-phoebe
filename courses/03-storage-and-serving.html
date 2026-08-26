@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 3 of 8. Row store, column store, lake, stream - chosen by access pattern, not by fashion. The freshness-cost curve, PACELC, and why designing to the average latency is designing for nobody.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Storage and serving - learn system design with phoebe">
+<meta property="og:description" content="Session 3 of 8. The freshness-cost curve, and why every decision that makes the dashboard fast makes the data older.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/courses/03-storage-and-serving.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Storage and serving - learn system design with phoebe">
+<meta name="twitter:description" content="Session 3 of 8. Access pattern decides the store. Freshness is what you pay with.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 3 · Storage and serving - learn system design with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-system-design-with-phoebe</a> / Session 3 of 8</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn System Design with Phoebe · Session 3 of 8</div>
+    <h1>Storage and <span class="accent">serving</span></h1>
+    <p class="sub">This is the session where the course stops being comfortable. Every decision that makes Daybreak's dashboard fast makes Daybreak's data older, and there is no configuration of anything that escapes that. Tonight you learn to read the freshness-cost curve, to pick a store from the access pattern rather than from the conference talk, and to say out loud which meter you are spending. The naive architecture you are replacing has the freshest data you will ever have. That is not a joke.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Medium</span>
+      <span class="chip audience">Anyone choosing between a database, a warehouse and a stream</span>
+      <span class="chip audience">No cloud account needed</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Access patterns, the curve, and the tail</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: Daybreak's read path, decided</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are</h2>
+    </div>
+    <p class="lede">Sessions 1 and 2 were about what the system must do and who owns which piece. Tonight is the first session where you spend a meter to buy another one, on purpose, in writing.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Daybreak's storage decision written down with its consequence attached, the ability to say where 9.4 seconds of dashboard load actually goes, and a working answer to the question "should this be streaming" that does not depend on anyone's opinion.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The sentence this whole session hangs on<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Daybreak's current architecture has the best data freshness it will ever have.</strong> The dashboard queries production. The number on screen is five minutes old. Everything you are about to do makes that worse.</p>
+        <p>That is not a paradox and it is not an argument for doing nothing. It is the shape of the trade, and the reason it surprises people is that "modernise the platform" is usually sold as an improvement on every axis at once. It is not. It is an improvement on latency, cost-at-scale, correctness and blast radius, paid for in freshness.</p>
+        <p>If you take nothing else from tonight: <strong>name what gets worse, in the document, before somebody else names it in the review.</strong></p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers access patterns</span>
+      <h2>The store is chosen by how it is read, not by what it holds</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">Row stores and column stores are not competing products at different points on a quality ladder. They are answers to two different questions, and the question is asked by your read pattern.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A row store reading whole records versus a column store reading two columns across many records">
+        <style>
+          .s3rH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+          .s3rB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s3rN { font: 400 12px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <text class="s3rH" x="40" y="34">Row store · reads whole records</text>
+        <text class="s3rH" x="470" y="34">Column store · reads whole columns</text>
+
+        <g>
+          <rect x="40" y="48" width="380" height="26" rx="4" fill="#0C4A6E" fill-opacity=".22" stroke="#0C4A6E"/>
+          <rect x="40" y="80" width="380" height="26" rx="4" fill="#fff" stroke="#DEE7EC"/>
+          <rect x="40" y="112" width="380" height="26" rx="4" fill="#fff" stroke="#DEE7EC"/>
+          <rect x="40" y="144" width="380" height="26" rx="4" fill="#fff" stroke="#DEE7EC"/>
+          <text class="s3rB" x="52" y="66">order 8412 · all 24 fields</text>
+          <text class="s3rN" x="52" y="98">order 8413</text>
+          <text class="s3rN" x="52" y="130">order 8414</text>
+          <text class="s3rN" x="52" y="162">order 8415</text>
+        </g>
+
+        <g>
+          <rect x="470" y="48" width="88" height="122" rx="4" fill="#F0A202" fill-opacity=".28" stroke="#F0A202"/>
+          <rect x="566" y="48" width="88" height="122" rx="4" fill="#fff" stroke="#DEE7EC"/>
+          <rect x="662" y="48" width="88" height="122" rx="4" fill="#F0A202" fill-opacity=".28" stroke="#F0A202"/>
+          <rect x="758" y="48" width="82" height="122" rx="4" fill="#fff" stroke="#DEE7EC"/>
+          <text class="s3rB" x="482" y="112">sku</text>
+          <text class="s3rN" x="578" y="112">email</text>
+          <text class="s3rB" x="674" y="112">total</text>
+          <text class="s3rN" x="770" y="112">addr</text>
+        </g>
+
+        <text class="s3rN" x="40" y="194">"Show me this customer's order" reads one row.</text>
+        <text class="s3rN" x="470" y="194">"Revenue by SKU, 2 years" reads 2 of 24 columns.</text>
+
+        <rect x="40" y="214" width="800" height="82" rx="12" fill="#F8FAFB" stroke="#DEE7EC"/>
+        <text class="s3rH" x="60" y="240">The arithmetic nobody does</text>
+        <text class="s3rB" x="60" y="264">Daybreak's dashboard needs 2 of 24 columns. A row store still reads all 24.</text>
+        <text class="s3rB" x="60" y="286">That is 12x the bytes, before compression, for every single scan. Hence x0.30.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the column store is not faster in general, it is faster at this question</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Four stores, and the one question each is the answer to<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>Store</th><th>Answers</th><th>Costs you</th></tr>
+          <tr><td>Row store (OLTP)</td><td>"Give me this one record, and let me write it safely"</td><td>Wide scans, which it does by reading everything</td></tr>
+          <tr><td>Column store (OLAP)</td><td>"Aggregate these two fields across two years"</td><td>Single-record writes and updates, which it hates</td></tr>
+          <tr><td>Object storage / lake</td><td>"Keep everything cheaply, including things I do not have a use for yet"</td><td>Structure, guarantees, and the ability to delete one person's data</td></tr>
+          <tr><td>Stream / log</td><td>"Tell me the moment it happens, and let several consumers see it independently"</td><td>Money, operational surface, and simple mental models</td></tr>
+        </table>
+        <p>The correct Daybreak answer is <strong>row store and column store</strong>, which is also the correct answer for almost every company of its size. The interesting decision is not which one - it is what connects them, and how often.</p>
+        <div class="callout tip">
+          <p>Watch for the word "lakehouse" doing work in a room. It is a real and useful shape - table format and transactions over object storage - but it is frequently deployed as a way to avoid making the batch-versus-stream decision, which is the decision that actually costs money.</p>
+        </div>
+      </div>
+    </details>
+
+    <div class="hotspot" data-title="Where Daybreak's 9.4 seconds actually goes">
+      <div class="hs-mock">
+        <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A dashboard query path from browser through API to the production database, with the time spent at each stage">
+          <style>
+            .s3hH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+            .s3hB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+            .s3hN { font: 400 12px Inter, sans-serif; fill: #5B6B77; }
+            .s3hV { font: 800 14px Inter, sans-serif; fill: #14202A; }
+          </style>
+          <rect x="40" y="60" width="150" height="86" rx="10" fill="#fff" stroke="#DEE7EC"/>
+          <text class="s3hH" x="56" y="86">Browser</text>
+          <text class="s3hV" x="56" y="112">120 ms</text>
+          <text class="s3hN" x="56" y="132">render</text>
+
+          <rect x="222" y="60" width="150" height="86" rx="10" fill="#fff" stroke="#DEE7EC"/>
+          <text class="s3hH" x="238" y="86">API</text>
+          <text class="s3hV" x="238" y="112">80 ms</text>
+          <text class="s3hN" x="238" y="132">serialise</text>
+
+          <rect x="404" y="60" width="200" height="86" rx="10" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5"/>
+          <text class="s3hH" x="420" y="86" fill="#991B1B">Full table scan</text>
+          <text class="s3hV" x="420" y="112" fill="#991B1B">7,900 ms</text>
+          <text class="s3hN" x="420" y="132">24 columns, 2 years</text>
+
+          <rect x="636" y="60" width="204" height="86" rx="10" fill="#FEF6E4" stroke="#F0A202" stroke-width="1.5"/>
+          <text class="s3hH" x="652" y="86">Lock waits</text>
+          <text class="s3hV" x="652" y="112">1,300 ms</text>
+          <text class="s3hN" x="652" y="132">checkout is writing</text>
+
+          <path d="M190 103 L222 103 M372 103 L404 103 M604 103 L636 103" stroke="#C3D2DC" stroke-width="2"/>
+          <text class="s3hN" x="40" y="186">Total p95: 9,400 ms. The two boxes on the right are 98 percent of it.</text>
+          <text class="s3hN" x="40" y="208">A faster browser, a faster API and a bigger box all attack the 200 ms.</text>
+        </svg>
+      </div>
+      <button class="hs-pin" style="--x:57%;--y:34%" data-title="The 7.9 seconds"
+              data-cap="Reading 24 columns to answer a question about 2 of them. A column store takes this to roughly a third, and marts take what is left to a third of that."></button>
+      <button class="hs-pin" style="--x:84%;--y:34%" data-title="The 1.3 seconds"
+              data-cap="Analytics is queuing behind checkout writes on the same tables. A read replica removes this wait entirely and takes contention out of the scan as well - 4,230 ms on the board, for $260 a month. It is the first thing to do, not the last."></button>
+      <button class="hs-pin" style="--x:14%;--y:34%" data-title="The 120 ms nobody optimises away"
+              data-cap="Front-end work here is real engineering effort for 1.3 percent of the number. Always find out where the time is before you decide where to spend the week."></button>
+    </div>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the curve</span>
+      <h2>The freshness-cost curve, and where to stand on it</h2>
+      <span class="tag concept">7 min live</span>
+    </div>
+    <p class="lede">Batch, micro-batch and streaming are not three levels of sophistication. They are three points on a curve where freshness is bought with money and operational surface, and the curve gets steep at the end.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve showing data freshness against monthly cost, with nightly batch, micro-batch and streaming marked, and the curve steepening sharply at the streaming end">
+        <style>
+          .s3cH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+          .s3cB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s3cN { font: 400 12px Inter, sans-serif; fill: #5B6B77; }
+          .s3cA { font: 700 11.5px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <line x1="120" y1="248" x2="820" y2="248" stroke="#C3D2DC" stroke-width="1.5"/>
+        <line x1="120" y1="44" x2="120" y2="248" stroke="#C3D2DC" stroke-width="1.5"/>
+        <text class="s3cA" x="120" y="272">fresher data, to the right</text>
+        <text class="s3cA" x="34" y="50">cost</text>
+
+        <path d="M160 232 C 380 224, 520 206, 620 172 S 740 96, 790 58" fill="none" stroke="#0C4A6E" stroke-width="2.5"/>
+
+        <circle cx="180" cy="231" r="6" fill="#0C4A6E"/>
+        <text class="s3cH" x="150" y="212">Nightly</text>
+        <text class="s3cN" x="150" y="196">24 hr · $420</text>
+
+        <circle cx="430" cy="216" r="6" fill="#0C4A6E"/>
+        <text class="s3cH" x="396" y="198">Micro-batch</text>
+        <text class="s3cN" x="396" y="182">18 min · +$180</text>
+
+        <circle cx="628" cy="167" r="6" fill="#0C4A6E"/>
+        <text class="s3cH" x="596" y="148">Near-real-time</text>
+        <text class="s3cN" x="596" y="132">5 min · +$400</text>
+
+        <circle cx="789" cy="59" r="6" fill="#F0A202"/>
+        <text class="s3cH" x="700" y="42">Streaming</text>
+        <text class="s3cN" x="700" y="26">1 min · +$900</text>
+
+        <text class="s3cB" x="120" y="298">The first 23 hours of freshness cost $180. The last 17 minutes cost $900.</text>
+        <text class="s3cN" x="120" y="318">Nobody argues about the cheap part of this curve. Every argument is about the right-hand end.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - freshness is cheap until it is not, and the elbow is where the design conversation belongs</figcaption>
+    </figure>
+
+    <div class="wipe" data-title="Two honest architectures for the same company" data-label-a="Fresh and slow" data-label-b="Fast and a bit stale" data-foot="Drag across. Neither of these is wrong. One of them is wrong for a given requirement.">
+      <div class="wipe-a">
+        <p><strong>Dashboards query production directly. Data is 5 minutes old.</strong></p>
+        <p>p95 is 9.4 seconds. Analytics queues behind checkout. One upstream change reaches 82 percent of everything downstream. It costs $1,180 a month and it is, genuinely, the freshest Daybreak will ever be. For a founder checking today's orders on a phone, this is not the worst design in the world.</p>
+      </div>
+      <div class="wipe-b">
+        <p><strong>Replica, column store, 15-minute incremental loads, pre-aggregated marts.</strong></p>
+        <p>p95 is 543 ms - seventeen times faster. Data is 24 minutes old instead of 5. Cost is $2,180 a month. For a dashboard four people open at 08:40 to compare against yesterday, the 19 extra minutes of staleness are worth precisely nothing to anybody, and the 8.9 seconds are worth a great deal.</p>
+      </div>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The three questions that settle batch versus streaming<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Is there a decision on the other end that changes within the window?</strong> A pager that fires on checkout failures: yes, absolutely. A revenue dashboard compared against yesterday: no, and no amount of enthusiasm changes that.</li>
+          <li><strong>Who is awake to act on it?</strong> Minute-fresh data arriving at 03:00 with nobody on call is a cost with no benefit attached. Freshness only has value where there is someone to act, and a decision they can take.</li>
+          <li><strong>What is the operational surface you are adding?</strong> Streaming adds components, and components are blast radius. On the session 5 board, streaming moves blast radius <em>up</em> by 12 points. That is not a criticism of streaming, it is its price.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">The honest version</span>
+          <p>Streaming is correct for Daybreak's fraud alerting and incorrect for Daybreak's revenue dashboard, and both of those systems live in the same company, on the same data, next to each other. "Should we be streaming" is not a question about the company. It is a question about one use case at a time.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>PACELC: the version of CAP that survives contact with a real system<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Brewer's CAP says that during a network partition you choose between consistency and availability. True, and less useful than it looks, because partitions are rare and the theorem says nothing about the other 99.9 percent of the time.</p>
+        <p>Abadi's PACELC completes it: <strong>if there is a Partition, choose Availability or Consistency; Else, choose Latency or Consistency.</strong> The second half is the half you live in. Every replica you add, every cache you put in front of a table, every materialized aggregate is you choosing latency over consistency on an ordinary Tuesday with no partition anywhere.</p>
+        <p>Which is exactly what the read replica on Daybreak's board is. It is two minutes of replication lag, traded for 4,230 milliseconds. Say it that way in a design review and nobody has to look up a theorem.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Decide Daybreak's read path, and write the consequence</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Five moves down the read path, in the order a real team should do them, which is not the order teams usually do them in.</p>
+
+    <div class="tick" data-stages="Replica|Column store|Load rhythm|Marts|Say the cost" data-title="Daybreak's read path, in the order that actually pays" data-foot="These are the exact numbers the session 5 board produces. The order matters: each rung is cheaper than the one people usually start with.">
+      <p class="tick-note" data-stage="0"><b>Read replica · $260 · p95 9,400 to 5,170 ms.</b> Stop analytics competing with checkout. Two minutes of replication lag, 45 percent of the latency gone, and it is a weekend of work. Almost nobody does this first and almost everybody should.</p>
+      <p class="tick-note" data-stage="1"><b>Columnar warehouse, nightly · +$420 · 5,170 to 1,551 ms.</b> Read 2 columns instead of 24. This is also the moment your data becomes a day old, and you should feel that.</p>
+      <p class="tick-note" data-stage="2"><b>Incremental every 15 min · +$180 · data 1,440 min to 18 min.</b> Buy back almost all the freshness you just spent, for the second-cheapest line on the bill. Needs idempotent loads, which is session 4.</p>
+      <p class="tick-note" data-stage="3"><b>Pre-aggregated marts · +$140 · 1,551 to 543 ms.</b> Compute once on write instead of every time on read. The largest single latency win left, for the price of a lunch.</p>
+      <p class="tick-note" data-stage="4"><b>Now write the consequence.</b> p95 543 ms, cost $2,180, data 24 minutes old instead of 5. You made the data 19 minutes worse. Put that sentence in the doc yourself.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><p><strong>Find your 7.9 seconds.</strong> On a real query you care about, get the actual breakdown - scan, lock wait, serialise, render. Do this before choosing anything. Half the time the answer is embarrassing and free.</p></div>
+      <div class="step"><p><strong>Ask whether the read pattern is wide or narrow.</strong> Count the columns your heaviest query needs against the columns in the table. If it is under a fifth, you have a column-store argument with a number attached.</p></div>
+      <div class="step"><p><strong>Pick a load rhythm by asking the decision question, not the technology question.</strong> "What decision changes if this arrives 15 minutes sooner?" Write the answer down verbatim. If it is "none", you have just saved $900 a month.</p></div>
+      <div class="step"><p><strong>Write the consequence sentence.</strong> "We are trading X minutes of freshness for Y milliseconds of p95 and Z dollars." If you cannot fill in all three letters, you have not finished deciding.</p></div>
+      <div class="step"><p><strong>Draft the option you are rejecting, fairly.</strong> Write the two-sentence case for streaming Daybreak's whole path. Make it good. Then write the one sentence that beats it - which is almost certainly about who is awake at 03:00 to act on it.</p></div>
+      <div class="step"><p><strong>Sanity-check against the tail.</strong> Your p95 is the number in the requirement. If your evidence is an average, go and get the percentile, because the two can differ by a factor of five on a system with lock contention.</p></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>If you take one thing from tonight.</strong> Get the breakdown before you choose the store. Nearly every over-engineered platform started with someone choosing an architecture to fix a number they had never decomposed.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 4</h2>
+      <span class="tag exercise">25 min</span>
+    </div>
+    <ol>
+      <li><strong>Decompose one slow thing.</strong> Get the real stage-by-stage timing of a query, a page or a report you care about. Write the four numbers down.</li>
+      <li><strong>Count columns.</strong> For your heaviest analytical query: columns needed against columns in the table. That ratio is your column-store argument or the end of it.</li>
+      <li><strong>Ask the decision question to a real person.</strong> "What would you do differently if this were 15 minutes fresher?" Bring their exact words to session 4.</li>
+      <li><strong>Write the consequence line into your design doc.</strong> Freshness traded, latency bought, dollars spent. Three numbers, one sentence.</li>
+      <li><strong>Find one thing on the right-hand end of the curve in your own stack.</strong> Something streaming, near-real-time or event-driven that nobody acts on within its window. It is nearly always there, and it is nearly always someone's old enthusiasm.</li>
+    </ol>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 3 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · Daybreak moves its dashboard from production to a columnar warehouse loaded nightly. What happened to data freshness?</p>
+      <button class="qopt" type="button">A · It improved, because the warehouse is purpose-built for analytics</button>
+      <button class="qopt" type="button">B · It got dramatically worse - from 5 minutes old to a full day - and that is the price of the latency and isolation you bought</button>
+      <button class="qopt" type="button">C · It stayed the same, since the same data is being copied</button>
+      <p class="qwhy">The naive architecture is the freshest one, because it is production. A nightly load makes the data as old as the load interval. Every serious architecture on the board is worse on freshness than doing nothing, and the honest doc says so.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Which question best settles whether something should be streaming?</p>
+      <button class="qopt" type="button">A · Does our platform already support streaming?</button>
+      <button class="qopt" type="button">B · Is our data volume large enough to justify it?</button>
+      <button class="qopt" type="button">C · Is there a decision on the other end that changes inside the window, and someone awake to take it?</button>
+      <p class="qwhy">Volume is not the trigger - a low-volume fraud alert needs minutes, a huge revenue rollup does not. Freshness only has value where a decision changes and a person or a system can act. Otherwise you have bought a cost with no benefit and 12 extra points of blast radius.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · PACELC adds what to CAP that matters day to day?</p>
+      <button class="qopt" type="button">A · That even with no partition, you are still trading latency against consistency - which is what every replica, cache and materialized aggregate actually is</button>
+      <button class="qopt" type="button">B · That availability should always be preferred to consistency</button>
+      <button class="qopt" type="button">C · That partitions are more common than CAP assumed</button>
+      <p class="qwhy">CAP describes the rare case. The "ELC" half describes the ordinary Tuesday: Else, choose Latency or Consistency. Daybreak's read replica is exactly that trade - two minutes of lag for 4,230 milliseconds - and naming it that way beats citing a theorem.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ OFFICIAL COVERAGE ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">OLTP, OLAP, lake and stream chosen by access pattern</span><span class="note">Row versus column shown as bytes read, with Daybreak's 2-of-24-columns ratio as the argument</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The freshness-cost curve</span><span class="note">Nightly, micro-batch, near-real-time and streaming as points on one curve. The first 23 hours cost $180, the last 17 minutes cost $900</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Replicas and materialized aggregates</span><span class="note">The two cheapest latency levers on the board, with the lock-contention breakdown that justifies the replica</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">PACELC (Abadi), extending CAP (Brewer)</span><span class="note">The Else-Latency-or-Consistency half, applied directly to the replica decision</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The Tail at Scale, Dean and Barroso</span><span class="note">Design to p95, and check that your evidence is a percentile rather than a mean</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Partitioning, file formats, physical modeling</span><span class="note">Treated as decisions with consequences. The hands-on build lives in learn-data-warehouse-with-phoebe and learn-data-engineering-with-phoebe</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Full source map with every URL: <span class="mono">materials/official-course-map.md</span> in this repo. Certificates, videos and assessments stay with the official providers.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 3 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Access pattern decides</b><span>Narrow reads want rows. Wide scans want columns. Count the columns and the argument is over.</span></div>
+      <div class="cheat-item"><b>Decompose before choosing</b><span>7,900 ms of scan and 1,300 ms of lock wait. The browser was 120. Find the number before spending the week.</span></div>
+      <div class="cheat-item"><b>The curve has an elbow</b><span>23 hours of freshness for $180. The last 17 minutes for $900. Every argument is about the elbow.</span></div>
+      <div class="cheat-item"><b>The streaming test</b><span>Does a decision change in the window, and is someone awake to take it? Volume is not the trigger.</span></div>
+      <div class="cheat-item"><b>PACELC</b><span>Else, Latency or Consistency. Every replica and cache is that trade, on an ordinary day.</span></div>
+      <div class="cheat-item"><b>Name what got worse</b><span>"24 minutes old instead of 5." Write it yourself, before the reviewer writes it for you.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>You chose a load rhythm. Session 4 is about the thing that runs it, and about the single sentence that separates a platform that recovers from one that lies to you: <strong>cron knows what time it is, an orchestrator knows what finished</strong>. Plus idempotency, which is what makes "just run it again" a boring sentence instead of a frightening one.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 3 of 8 · learn-system-design-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="02-boundaries-and-contracts.html">← Previous</a> &nbsp;·&nbsp; <a href="04-orchestration-topology.html">Next: Orchestration topology →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 2 of 8. Where one team's problem stops being another team's problem. The three couplings that actually hurt, what belongs in a data contract, and why the producer's build should go red instead of your dashboard.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Boundaries and contracts - learn system design with phoebe">
+<meta property="og:description" content="Session 2 of 8. The three couplings that hurt, and why the producer's build should go red instead of your dashboard.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/courses/02-boundaries-and-contracts.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Boundaries and contracts - learn system design with phoebe">
+<meta name="twitter:description" content="Session 2 of 8. Coupling, contracts, and breaking the producer instead of the consumer.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 2 · Boundaries and contracts - learn system design with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-system-design-with-phoebe</a> / Session 2 of 8</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn System Design with Phoebe · Session 2 of 8</div>
+    <h1>Boundaries and <span class="accent">contracts</span></h1>
+    <p class="sub">Every outage you have ever been paged for happened at a boundary. Somebody changed something they owned, in a way that was entirely reasonable inside their own world, and it arrived in yours as a blank dashboard. Tonight is about where the lines go, what crosses them, and the single structural move that turns other people's changes from your problem into their failing build.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Easy</span>
+      <span class="chip audience">Anyone who has been broken by a team that did not know you existed</span>
+      <span class="chip audience">No cloud account needed</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · Three couplings, and what a contract holds</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: Daybreak's orders contract</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are</h2>
+    </div>
+    <p class="lede">Session 1 gave you four meters. Tonight is entirely about the fourth one, <strong>blast radius</strong>, because it is the meter that is decided by organisational shape rather than by technology, and it is the one that has the single cheapest fix on the whole board.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A written contract for one real table, a boundary map that says which team owns which piece of Daybreak, and the ability to answer "whose fault is this" before the incident rather than during it.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The uncomfortable framing: your architecture will look like your org chart<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Conway's observation from 1967 has aged better than almost anything else in this field: organisations design systems that mirror their own communication structure. It is not a warning, it is a prediction, and it is usually correct.</p>
+        <p>The practical consequence for you: <strong>if two teams have to talk every time a column changes, you have not drawn a boundary, you have drawn a line on a diagram.</strong> A real boundary is one where the other side can change freely inside it and you will not find out, because nothing you depend on moved.</p>
+        <p>That is what a contract is for. It is not paperwork. It is the definition of what "inside" means.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers coupling</span>
+      <h2>Three couplings, and only one of them is the one people talk about</h2>
+      <span class="tag concept">7 min live</span>
+    </div>
+    <p class="lede">Everyone knows about schema coupling. It is the one with the error message. The two that actually cost you money are the two that fail silently.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three kinds of coupling between a producer and a consumer: schema, semantic and operational, with how each one fails">
+        <style>
+          .s2kH { font: 800 13px Inter, sans-serif; fill: #08324A; }
+          .s2kB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s2kN { font: 400 12px Inter, sans-serif; fill: #5B6B77; }
+          .s2kR { font: 700 12px Inter, sans-serif; fill: #991B1B; }
+        </style>
+        <rect x="40" y="34" width="255" height="86" rx="10" fill="#fff" stroke="#0C4A6E" stroke-width="1.5"/>
+        <text class="s2kH" x="58" y="60">Schema coupling</text>
+        <text class="s2kB" x="58" y="82">A column is renamed or retyped</text>
+        <text class="s2kR" x="58" y="104">Fails loudly. You get an error</text>
+
+        <rect x="313" y="34" width="255" height="86" rx="10" fill="#fff" stroke="#F0A202" stroke-width="1.5"/>
+        <text class="s2kH" x="331" y="60">Semantic coupling</text>
+        <text class="s2kB" x="331" y="82">"Revenue" quietly starts</text>
+        <text class="s2kB" x="331" y="99">including refunds</text>
+        <text class="s2kR" x="331" y="118">Fails silently. Numbers move</text>
+
+        <rect x="586" y="34" width="254" height="86" rx="10" fill="#fff" stroke="#F0A202" stroke-width="1.5"/>
+        <text class="s2kH" x="604" y="60">Operational coupling</text>
+        <text class="s2kB" x="604" y="82">Their job now finishes at</text>
+        <text class="s2kB" x="604" y="99">06:40 instead of 05:10</text>
+        <text class="s2kR" x="604" y="118">Fails silently. You serve stale</text>
+
+        <rect x="40" y="150" width="800" height="112" rx="12" fill="#F8FAFB" stroke="#DEE7EC"/>
+        <text class="s2kH" x="60" y="176">Which one costs the most?</text>
+        <text class="s2kB" x="60" y="200">Schema breaks are found in minutes, because something crashed and somebody shouted.</text>
+        <text class="s2kB" x="60" y="222">Semantic and operational breaks are found in weeks, by finance, in a board pack,</text>
+        <text class="s2kB" x="60" y="244">after the wrong number has already been acted on. That is the expensive kind.</text>
+
+        <rect x="40" y="278" width="800" height="38" rx="10" fill="#EEF6FB" stroke="#0C4A6E" stroke-width="1.5"/>
+        <text class="s2kH" x="60" y="302">A contract that only covers types is covering the cheapest failure.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the loud failure is the one you can afford</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>How to find a boundary that is actually there<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Draw the line where <strong>change frequency</strong> and <strong>ownership</strong> agree. Two tests, both quick:</p>
+        <ul>
+          <li><strong>The change test.</strong> If a change on their side requires a change on yours in the same week, you are inside one boundary pretending to be two. Either merge them or make the interface narrower.</li>
+          <li><strong>The pager test.</strong> When this breaks at 04:00, who gets woken up, and do they have the access and the knowledge to fix it? If the answer is "we wake up the wrong person and they escalate", the boundary is drawn in the wrong place. Ownership is not who wrote it, it is who is woken up.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Daybreak, concretely</span>
+          <p>Checkout owns <span class="mono">orders</span> and <span class="mono">order_lines</span>. Analytics owns everything downstream of the extract. The boundary is the extract. Checkout may add columns, change indexes, reshape internals and never tell analytics. What it may not do is change the meaning, the type or the presence of the five fields it publishes. That is the whole deal, and it fits in a paragraph.</p>
+        </div>
+        <p>Dehghani's data mesh argues the same thing from the other end: the domain that produces the data should own its quality, because they are the only people who know what it means. You do not need the whole mesh to take that one principle.</p>
+      </div>
+    </details>
+
+    <div class="tryrow" data-fn="formula" data-title="Semantic coupling, in one formula" data-hint="Try =SUM(jan:jun)/6 against =SUM(jan:jun)/2" data-seed="=SUM(jan:jun)/6" data-cta="Compute it"></div>
+
+    <p>Change the divisor and the same source data gives a different "average monthly revenue". Nothing errored, nothing was renamed, and two teams now have two numbers. That is semantic coupling in nine characters, and it is why a contract has to carry the <em>definition</em> and not just the type.</p>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the contract</span>
+      <h2>What belongs in a data contract, and where it is enforced</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">A contract is not a document. A document that nobody executes is a wish. A contract is a file in the producer's repository that can fail their build, and everything else about it is detail.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The six things a data contract carries, from schema through to a breaking change notice period">
+        <style>
+          .s2fH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+          .s2fB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s2fN { font: 400 12px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <rect x="40" y="28" width="386" height="60" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s2fH" x="58" y="50">1 · Schema</text>
+        <text class="s2fN" x="58" y="72">field names, types, nullability</text>
+        <rect x="454" y="28" width="386" height="60" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s2fH" x="472" y="50">2 · Semantics</text>
+        <text class="s2fN" x="472" y="72">what each field MEANS, in a sentence</text>
+
+        <rect x="40" y="102" width="386" height="60" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s2fH" x="58" y="124">3 · Ownership</text>
+        <text class="s2fN" x="58" y="146">a team, a rota, a channel. Not a person</text>
+        <rect x="454" y="102" width="386" height="60" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s2fH" x="472" y="124">4 · Quality expectations</text>
+        <text class="s2fN" x="472" y="146">uniqueness, ranges, null rates, row counts</text>
+
+        <rect x="40" y="176" width="386" height="60" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+        <text class="s2fH" x="58" y="198">5 · Delivery promise</text>
+        <text class="s2fN" x="58" y="220">landed by 05:10, every business day</text>
+        <rect x="454" y="176" width="386" height="60" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+        <text class="s2fH" x="472" y="198">6 · Breaking-change notice</text>
+        <text class="s2fN" x="472" y="220">published guidance is 90 days or more</text>
+
+        <text class="s2fB" x="40" y="264">Rows 1 to 4 are what most teams write. Rows 5 and 6 are the ones that prevent the</text>
+        <text class="s2fB" x="40" y="284">silent failures, and they are the two that get cut when someone is in a hurry.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - a contract without a delivery promise cannot detect a late producer</figcaption>
+    </figure>
+
+    <div class="wipe" data-title="The same schema change, two architectures" data-label-a="No contract" data-label-b="Contract in the producer's CI" data-foot="Drag across. Same rename, same Tuesday, entirely different week.">
+      <div class="wipe-a">
+        <p><strong>Checkout renames <span class="mono">order_total</span> to <span class="mono">gross_total</span>. Their tests pass. They ship at 16:20.</strong></p>
+        <p>The nightly load runs at 02:00 and writes nothing. Cron reports success, because cron ran the job and the job exited. At 08:40, 34 of 42 downstream assets are wrong or empty, and the person who finds out is a finance analyst, not an engineer. Three days of investigation lands on a team that has entirely forgotten shipping it.</p>
+      </div>
+      <div class="wipe-b">
+        <p><strong>Checkout renames <span class="mono">order_total</span> to <span class="mono">gross_total</span>. Their build goes red at 16:04.</strong></p>
+        <p>The failure message names the contract, the consumers, and the notice period. They add the new column alongside the old one, ship, and open a deprecation with a date. Nothing downstream moved. Total cost: sixteen minutes, paid by the team that made the change and can actually fix it.</p>
+      </div>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Which schema changes are safe, and which are lies<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>Change</th><th>Safe?</th><th>Why</th></tr>
+          <tr><td>Add a nullable column</td><td>✓</td><td>Nothing that exists depends on it. The cheapest kind of evolution</td></tr>
+          <tr><td>Widen a type, int to bigint</td><td>✓</td><td>Every existing value still fits and still reads</td></tr>
+          <tr><td>Rename a column</td><td>✗</td><td>Not a rename to a consumer. It is a drop plus an add, and the drop lands first</td></tr>
+          <tr><td>Narrow a type, string to int</td><td>✗</td><td>Some existing value will not fit, and you will find out which one in production</td></tr>
+          <tr><td>Add a NOT NULL column</td><td>✗</td><td>Every historical row is now in violation of a rule you just invented</td></tr>
+          <tr><td>Change a unit or a definition</td><td>✗✗</td><td>The worst one. Types match, loads succeed, and every number is wrong</td></tr>
+        </table>
+        <div class="callout tip">
+          <p>The safe pattern for anything in the second half of that table is <strong>expand then contract</strong>: add the new shape, write both for a notice period, migrate consumers, then remove the old one. Published guidance commonly puts that notice period at 90 days or more, because data consumers have long release cycles and a dashboard nobody owns will not be updated in a fortnight.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Enforcement: where the check actually runs<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three places, in increasing order of usefulness:</p>
+        <ul>
+          <li><strong>In the consumer's pipeline.</strong> You validate on read and fail your own job. Better than nothing, but you have caught the break after it shipped, and the cost is entirely yours.</li>
+          <li><strong>At the boundary, on write.</strong> A schema registry or a validation step rejects non-conforming data. Now bad data never lands, but the producer still found out late.</li>
+          <li><strong>In the producer's CI, before merge.</strong> A compatibility test that simulates consumer behaviour against the proposed schema. The build goes red on their branch. <strong>This is the one that changes behaviour</strong>, because it moves the cost to the moment and the team where it is cheapest to fix.</li>
+        </ul>
+        <p>None of this requires a platform. A contract can be a YAML file in the producer's repo plus a CI job that reads it. Teams reach for a vendor here far earlier than they need to, and the vendor does not solve the part that is actually hard, which is getting the producer to agree the file is binding.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Write the contract for Daybreak's orders extract</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">One table, five published fields, six blocks. You will write it in prose first, because a contract you cannot say out loud is a contract nobody will honour.</p>
+
+    <div class="tick" data-stages="Fields|Meaning|Owner|Quality|Delivery|Notice" data-title="Daybreak orders contract, block by block" data-foot="Write all six for one table. Six blocks is roughly 20 lines of YAML, and it is the highest-leverage 20 lines in this course.">
+      <p class="tick-note" data-stage="0"><b>Fields.</b> order_id, customer_id, order_total_cents, currency, placed_at. Five, not fifty. A contract that publishes every column you happen to have is a contract you can never change.</p>
+      <p class="tick-note" data-stage="1"><b>Meaning.</b> One sentence each. "order_total_cents is the amount charged to the customer at checkout, before refunds, in the smallest unit of the order currency." That sentence is what stops the finance argument.</p>
+      <p class="tick-note" data-stage="2"><b>Owner.</b> The checkout team, their rota, their channel. Never a named individual, because individuals leave and contracts do not.</p>
+      <p class="tick-note" data-stage="3"><b>Quality.</b> order_id unique and never null. order_total_cents between 0 and 5,000,000. placed_at never in the future. Row count within 40 percent of the trailing 7-day median, which catches the empty-load failure that types never will.</p>
+      <p class="tick-note" data-stage="4"><b>Delivery.</b> "Landed by 05:10 on every business day." Without this line, a producer who becomes 90 minutes slower has broken nothing, and your 07:00 dashboard is simply wrong.</p>
+      <p class="tick-note" data-stage="5"><b>Notice.</b> Breaking changes get 90 days and a named migration path. Additive changes get none, which is the incentive: make additive changes easy and breaking ones expensive.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><p><strong>List the five fields you would publish</strong> for a table you actually own. Not the columns that exist - the ones you are willing to promise. Most people's first list is too long by half.</p></div>
+      <div class="step"><p><strong>Write the meaning sentence for the one that has ever caused an argument.</strong> Usually it is the money one, and usually the argument is about refunds, tax, or currency. Write the sentence that ends it.</p></div>
+      <div class="step"><p><strong>Write one quality rule that is not a type check.</strong> A row-count band, a null-rate ceiling, a range. Type checks catch the loud failure. This catches the quiet one.</p></div>
+      <div class="step"><p><strong>Write the delivery promise with a clock time in it.</strong> Then go and find out whether it is currently true, because roughly half the time it is not and nobody knows.</p></div>
+      <div class="step"><p><strong>Now the blast-radius meter below.</strong> It starts at Daybreak's current 82 percent - a change anywhere upstream reaches almost everything. Switch on contracts first and watch what one lever does.</p></div>
+      <div class="step"><p><strong>Then switch on the other three isolation levers.</strong> Notice that contracts alone is worth more than all three of the others put together, and it is the cheapest line on the bill at $60 a month. This is the most lopsided trade in the entire course.</p></div>
+      <div class="step"><p><strong>Switch on "stream everything" last.</strong> Blast radius goes up, not down. More moving parts is more surface. Session 3 explains when that price is worth paying and session 5 makes you pay it.</p></div>
+    </div>
+
+    <div class="stakes" data-base="82" data-unit="% of 42 assets" data-lower-is-better="1" data-title="Daybreak's blast radius, as you draw boundaries" data-foot="The same isolation arithmetic the session 5 board runs. Blast radius floors at 4 percent - nothing is ever fully isolated.">
+      <label><input type="checkbox" data-delta="-34"> Data contracts checked in the producer's CI</label>
+      <label><input type="checkbox" data-delta="-16"> Dependency-aware orchestrator with SLAs</label>
+      <label><input type="checkbox" data-delta="-14"> Columnar warehouse, so analytics stops reading production tables</label>
+      <label><input type="checkbox" data-delta="-12"> Retries, dead-letter queue, idempotent writes</label>
+      <label><input type="checkbox" data-delta="-6"> Read replica between checkout and every analyst</label>
+      <label><input type="checkbox" data-delta="12" data-trap="1"> Stream the whole path, because more components is more to break</label>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>If you take one thing from tonight.</strong> Move the failure to the producer's build. Everything else in this session is detail around that single structural move, and it is worth $60 a month and 34 points of blast radius.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 3</h2>
+      <span class="tag exercise">25 min</span>
+    </div>
+    <ol>
+      <li><strong>Write the six blocks for one real table you consume.</strong> Not one you own - one you depend on. The gaps you cannot fill are exactly the questions to take to its owner.</li>
+      <li><strong>Find your last silent failure.</strong> Search your incident notes or your memory for a time a number was wrong for more than a day. Classify it: schema, semantic, or operational. It will almost never be schema.</li>
+      <li><strong>Test one delivery promise.</strong> Pick the table your morning report depends on and find out what time it actually lands, for the last 14 days. Compare that to what everyone believes.</li>
+      <li><strong>Ask one producer the notice question.</strong> "If you had to rename a column we use, how much warning could you give us?" Their answer tells you whether you have a boundary or a hope.</li>
+      <li><strong>Add the boundary map to your design doc.</strong> Two or three boxes, and on each arrow the five fields that cross it. Session 3 decides where the data goes once it has crossed.</li>
+    </ol>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 2 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">1 · Which coupling failure typically costs the most, and why?</p>
+      <button class="qopt" type="button">A · Schema, because the pipeline crashes and everything downstream stops</button>
+      <button class="qopt" type="button">B · Operational, because being late is the most common failure</button>
+      <button class="qopt" type="button">C · Semantic, because nothing errors, the numbers simply change meaning and get acted on for weeks before anyone notices</button>
+      <p class="qwhy">A schema break is loud and found in minutes. A definition that quietly starts including refunds passes every type check, loads cleanly, and is discovered by finance in a board pack. Loud failures are the affordable ones.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">2 · Where should a data contract be enforced for it to actually change behaviour?</p>
+      <button class="qopt" type="button">A · In the consumer's pipeline, validating on read</button>
+      <button class="qopt" type="button">B · In the producer's CI, as a compatibility test that fails their build before merge</button>
+      <button class="qopt" type="button">C · In a documentation site both teams have agreed to keep updated</button>
+      <p class="qwhy">Validating on read means you caught it after it shipped and the cost is yours. A doc is a wish. The build going red on the producer's branch puts the cost at the moment and on the team where it is cheapest to fix, which is the entire point.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Which of these is a safe schema change to make without notice?</p>
+      <button class="qopt" type="button">A · Adding a nullable column</button>
+      <button class="qopt" type="button">B · Renaming a column to something clearer</button>
+      <button class="qopt" type="button">C · Changing amounts from dollars to cents, keeping the same column name and type</button>
+      <p class="qwhy">Additive and nullable breaks nothing that exists. A rename is a drop plus an add from the consumer's side. Option C is the worst change on the list: types match, loads succeed, and every number is off by a factor of 100 until somebody notices.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ OFFICIAL COVERAGE ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Coupling applied to data, not code</span><span class="note">Schema, semantic and operational coupling, with the failure signature and cost of each</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">What a data contract carries</span><span class="note">Schema, semantics, ownership, quality expectations, delivery promise, breaking-change notice. The last two are the ones usually missing</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Enforcement in the producer's CI</span><span class="note">Industry guidance is a compatibility test simulating consumer behaviour before deploy. Contrasted with validate-on-read and registry-on-write</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Schema evolution rules</span><span class="note">Additive and widening are safe; rename, narrow, NOT NULL and definition changes are not. Expand-then-contract as the migration pattern, with a 90-day-or-more notice period</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Conway's law as a design input</span><span class="note">Used as the practical test for whether a boundary is real: can they change inside it without telling you</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Data Mesh, Dehghani</span><span class="note">Domain ownership and data-as-a-product taken as the ownership argument. The full four-principle mesh treatment stays with the book</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Full source map with every URL: <span class="mono">materials/official-course-map.md</span> in this repo. Certificates, videos and assessments stay with the official providers.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 2 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Three couplings</b><span>Schema fails loudly. Semantic and operational fail silently, and those are the expensive ones.</span></div>
+      <div class="cheat-item"><b>The pager test</b><span>Ownership is not who wrote it. It is who gets woken up, and whether they can fix it.</span></div>
+      <div class="cheat-item"><b>Six blocks</b><span>Fields, meaning, owner, quality, delivery promise, notice period. The last two get cut and should not.</span></div>
+      <div class="cheat-item"><b>Break the producer</b><span>Enforce in their CI. Validate-on-read means you caught it after it shipped and you are paying.</span></div>
+      <div class="cheat-item"><b>Expand then contract</b><span>Add new, write both, migrate consumers, remove old. Notice period 90 days or more.</span></div>
+      <div class="cheat-item"><b>The cheapest lever</b><span>Contracts: $60 a month, 34 points of blast radius. Nothing else on the board trades like that.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>You have drawn the lines and written what crosses them. Session 3 decides where the data lands once it has crossed - row store, column store, lake, stream - and introduces the trade this whole course circles: <strong>every decision that makes the dashboard fast makes the data older</strong>, and you have to say which one you are buying.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 2 of 8 · learn-system-design-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="01-requirements-to-constraints.html">← Previous</a> &nbsp;·&nbsp; <a href="03-storage-and-serving.html">Next: Storage and serving →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 1 of 8. Nobody hands you an architecture problem, they hand you a complaint. Turning the dashboard is slow into four numbers you can design against, on paper, before any technology is named.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Requirements to constraints - learn system design with phoebe">
+<meta property="og:description" content="Session 1 of 8. Nobody hands you an architecture problem. They hand you a complaint.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/courses/01-requirements-to-constraints.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Requirements to constraints - learn system design with phoebe">
+<meta name="twitter:description" content="Session 1 of 8. Turning a complaint into four numbers you can design against.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 1 · Requirements to constraints - learn system design with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-system-design-with-phoebe</a> / Session 1 of 8</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn System Design with Phoebe · Session 1 of 8</div>
+    <h1>Requirements to <span class="accent">constraints</span></h1>
+    <p class="sub">Nobody has ever walked up to you and said "I would like a lambda architecture." What you get is "the dashboard is slow", "finance does not trust the numbers", or a silence that turns out to have been a decision. Tonight you learn to convert that into four numbers with units on them, do the arithmetic on paper before naming a single technology, and write the one page that will still be readable in two years. By session 8 you will be defending a design in a review. This is where the defence gets its evidence.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Start here</span>
+      <span class="chip audience">Anyone who has been handed a system and asked to make it better</span>
+      <span class="chip audience">No cloud account needed</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · The complaint, the four meters, the arithmetic</span>
+      <span class="a3" style="flex:5">18-40 · Build-along: Daybreak's one-page design doc</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>How this course works</h2>
+    </div>
+    <p class="lede">Eight sessions, 45 minutes each, and <strong>one platform</strong> you architect the whole way through. The platform belongs to Daybreak, the coffee-subscription brand from the SQL and warehouse courses. Three years old, one Postgres, dashboards querying production, and a founder who has started saying the word "scale" in meetings.</p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Daybreak's four design meters with real numbers against them, a capacity and cost estimate you did on paper in under ten minutes, and the first page of a design document that sessions 2 through 8 will keep filling in.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>This course is the decision, not the build<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Four courses on this shelf touch the same platform and none of them do this job. It is worth thirty seconds to make sure you are in the right room:</p>
+        <ul>
+          <li><strong><span class="mono">learn-ai-infra-with-phoebe</span></strong> is what the layers are and what they cost. An inventory and an investment case.</li>
+          <li><strong><span class="mono">learn-data-engineering-with-phoebe</span></strong> is how to build the ingestion-to-serving pipeline, hands on real DuckDB.</li>
+          <li><strong><span class="mono">learn-dataops-with-phoebe</span></strong> is how to test, deploy and operate the thing once it exists.</li>
+          <li><strong>This course</strong> is how to choose between them, under a budget, and defend it to a room. It stops at the design review, and the design review is session 8.</li>
+        </ul>
+        <p>If you have never built a pipeline, this course still works. You will be reasoning about trades, not writing DAGs. If you have built ten, this course is probably the one you have been missing, because nobody teaches the argument.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The artifact: one design document, in eight passes<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="clean">
+          <tr><th>Session</th><th>What your design doc gains</th></tr>
+          <tr><td>1 · tonight</td><td>The problem statement, four measured constraints, and a capacity estimate</td></tr>
+          <tr><td>2</td><td>Service and domain boundaries, plus the contract each one publishes</td></tr>
+          <tr><td>3</td><td>The storage and serving decision, with the freshness you are giving up named out loud</td></tr>
+          <tr><td>4</td><td>The orchestration topology and the data SLAs it has to hold</td></tr>
+          <tr><td>5</td><td>Failure design: blast radius, what retries do and do not cover</td></tr>
+          <tr><td>6</td><td>The governed shell - access, lineage, PII boundaries, retention, cost attribution</td></tr>
+          <tr><td>7</td><td>Where the model, the index and the agent loop sit, with budgets on each</td></tr>
+          <tr><td>8</td><td>The ADR set, and a review you survive</td></tr>
+        </table>
+        <p>If you only do three, do 1, 5 and 8. Session 1 is the requirement, session 5 is the trade, session 8 is the defence. Everything else is the middle of the argument.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the complaint</span>
+      <h2>A complaint is not a requirement, and the gap is where designs die</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">"The dashboard is slow" is four different problems wearing one sentence, and each one has a different correct answer. Until you know which, every architecture you draw is a guess with confidence.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One complaint, the dashboard is slow, splitting into four different underlying problems each with a different correct fix">
+        <style>
+          .s1cH { font: 800 13px Inter, sans-serif; fill: #14202A; }
+          .s1cB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s1cN { font: 400 12px Inter, sans-serif; fill: #5B6B77; }
+          .s1cT { font: 700 12px Inter, sans-serif; fill: #08324A; }
+        </style>
+        <rect x="40" y="26" width="230" height="52" rx="10" fill="#EEF6FB" stroke="#0C4A6E" stroke-width="1.5"/>
+        <text class="s1cH" x="56" y="50">"The dashboard is slow"</text>
+        <text class="s1cN" x="56" y="68">what you were actually handed</text>
+
+        <path d="M270 52 L330 52" stroke="#C3D2DC" stroke-width="2"/>
+        <path d="M330 52 L330 118 M330 52 L330 188 M330 52 L330 258 M330 52 L330 52" stroke="#C3D2DC" stroke-width="2" fill="none"/>
+        <path d="M330 118 L360 118 M330 188 L360 188 M330 258 L360 258 M330 52 L360 52" stroke="#C3D2DC" stroke-width="2"/>
+
+        <rect x="360" y="30" width="228" height="44" rx="8" fill="#fff" stroke="#DEE7EC"/>
+        <text class="s1cT" x="374" y="48">It takes 9 seconds to load</text>
+        <text class="s1cN" x="374" y="65">a latency problem</text>
+        <rect x="604" y="30" width="236" height="44" rx="8" fill="#F8FAFB" stroke="#DEE7EC"/>
+        <text class="s1cB" x="618" y="55">fix: marts, replicas, column store</text>
+
+        <rect x="360" y="96" width="228" height="44" rx="8" fill="#fff" stroke="#DEE7EC"/>
+        <text class="s1cT" x="374" y="114">The number is yesterday's</text>
+        <text class="s1cN" x="374" y="131">a freshness problem</text>
+        <rect x="604" y="96" width="236" height="44" rx="8" fill="#F8FAFB" stroke="#DEE7EC"/>
+        <text class="s1cB" x="618" y="121">fix: load more often, not faster</text>
+
+        <rect x="360" y="166" width="228" height="44" rx="8" fill="#fff" stroke="#DEE7EC"/>
+        <text class="s1cT" x="374" y="184">It disagrees with finance</text>
+        <text class="s1cN" x="374" y="201">a correctness problem</text>
+        <rect x="604" y="166" width="236" height="44" rx="8" fill="#F8FAFB" stroke="#DEE7EC"/>
+        <text class="s1cB" x="618" y="191">fix: contracts and one definition</text>
+
+        <rect x="360" y="236" width="228" height="44" rx="8" fill="#fff" stroke="#DEE7EC"/>
+        <text class="s1cT" x="374" y="254">It was empty on Tuesday</text>
+        <text class="s1cN" x="374" y="271">an availability problem</text>
+        <rect x="604" y="236" width="236" height="44" rx="8" fill="#F8FAFB" stroke="#DEE7EC"/>
+        <text class="s1cB" x="618" y="261">fix: orchestration and alerting</text>
+
+        <text class="s1cN" x="40" y="312">Four problems, four different architectures. Buying a bigger box fixes exactly one of them.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the first job is not designing, it is asking which of these four you were handed</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The four questions that turn a complaint into a design brief<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Ask these four, in this order, and write the answers down with units. If you cannot get a number, write down the guess and the name of the person who has to confirm it.</p>
+        <ul>
+          <li><strong>How fast, at the ninety-fifth percentile?</strong> Not "fast". Not the average. The average latency of a dashboard is the experience of nobody, because the slow loads are the ones people remember and complain about.</li>
+          <li><strong>How old is the data allowed to be?</strong> This is the question people find hardest, because the honest answer is usually much older than the answer they give first. "Real time" almost always means "before I get in tomorrow."</li>
+          <li><strong>What is it worth per month?</strong> A design with no budget is a wish. If nobody will tell you the number, propose one and watch how fast a number appears.</li>
+          <li><strong>What breaks if this is wrong, and who finds out first?</strong> This is blast radius, and it is the meter that separates people who have been on call from people who have not.</li>
+        </ul>
+        <div class="callout tip">
+          <p>The trick with the freshness question: do not ask "how fresh does it need to be". Ask <strong>"what would you do differently if this number arrived an hour earlier"</strong>. If the answer is nothing, you have just saved yourself a streaming pipeline.</p>
+        </div>
+      </div>
+    </details>
+
+    <div class="wipe" data-title="The same request, before and after the four questions" data-label-a="What you were handed" data-label-b="What you can design against" data-foot="Drag the handle across. Same conversation, ten minutes apart.">
+      <div class="wipe-a">
+        <p><strong>"The revenue dashboard is slow and finance does not trust it. Can we move to real-time? I think we need Kafka."</strong></p>
+        <p>Three problems and a solution, arriving in one sentence, in the wrong order. If you build what was asked for you will ship a streaming platform that is still slow and still disagrees with finance.</p>
+      </div>
+      <div class="wipe-b">
+        <p><strong>"Revenue by SKU, opened at 08:40 by four people. p95 under 2 seconds. Data may be up to 12 hours old - they compare to yesterday, never to this hour. Budget is under $2,800 a month. If it is wrong, finance restates the board pack, and they find out three days later."</strong></p>
+        <p>Four meters, one owner, one consequence. Kafka never comes up, because nothing in that paragraph asked for it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the arithmetic</span>
+      <h2>Back of envelope, before any technology has a name</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">Most architecture arguments are settled by one multiplication that neither side did. Ten minutes with a pen removes entire options from the table, and it removes them in a way nobody can argue with.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Daybreak capacity arithmetic from orders per day to bytes per year to a monthly storage cost">
+        <style>
+          .s1aH { font: 800 12px Inter, sans-serif; fill: #08324A; }
+          .s1aB { font: 400 12px Inter, sans-serif; fill: #14202A; }
+          .s1aV { font: 800 13px Inter, sans-serif; fill: #14202A; }
+          .s1aN { font: 400 12px Inter, sans-serif; fill: #5B6B77; }
+        </style>
+        <rect x="40" y="30" width="800" height="216" rx="12" fill="#F8FAFB" stroke="#DEE7EC"/>
+        <text class="s1aH" x="60" y="56">Daybreak, on the back of an envelope</text>
+
+        <text class="s1aB" x="60" y="86">Orders per day</text>
+        <text class="s1aV" x="330" y="86">18,000</text>
+        <text class="s1aN" x="470" y="86">founder said "about 20k"</text>
+
+        <text class="s1aB" x="60" y="112">Rows written per order</text>
+        <text class="s1aV" x="330" y="112">6</text>
+        <text class="s1aN" x="470" y="112">order, lines, payment, events</text>
+
+        <text class="s1aB" x="60" y="138">Bytes per row</text>
+        <text class="s1aV" x="330" y="138">400</text>
+        <text class="s1aN" x="470" y="138">measured, not guessed</text>
+
+        <line x1="60" y1="152" x2="820" y2="152" stroke="#C3D2DC"/>
+
+        <text class="s1aB" x="60" y="178">Raw per year</text>
+        <text class="s1aV" x="330" y="178">15.8 GB</text>
+        <text class="s1aN" x="470" y="178">18k x 6 x 400 x 365</text>
+
+        <text class="s1aB" x="60" y="204">Storage cost per month</text>
+        <text class="s1aV" x="330" y="204">under $1</text>
+        <text class="s1aN" x="470" y="204">at cloud object-store list price</text>
+
+        <text class="s1aB" x="60" y="230">Peak writes per second</text>
+        <text class="s1aV" x="330" y="230">about 5</text>
+        <text class="s1aN" x="470" y="230">even at a 4x lunchtime peak</text>
+
+        <rect x="40" y="262" width="800" height="40" rx="10" fill="#EEF6FB" stroke="#0C4A6E" stroke-width="1.5"/>
+        <text class="s1aH" x="60" y="287">Conclusion: this is not a scale problem. Anything on the market handles 5 writes a second.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - two minutes of arithmetic just deleted half the vendor shortlist</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Little's Law, the one formula worth memorising<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><span class="mono">L = λW</span>. The number of items in a system equals the arrival rate times the time each one spends inside. That is it, and it catches more bad designs than any diagram.</p>
+        <p>Worked, on Daybreak's proposed queue: 5 messages a second arriving, each taking 3 seconds to process. <span class="mono">L = 5 x 3 = 15</span> messages in flight. Fine. Now the consumer slows to 30 seconds because someone added an enrichment call to a model: <span class="mono">L = 5 x 30 = 150</span>. Still fine. Now the model provider throttles you and W becomes 300 seconds: <span class="mono">L = 1,500</span> in flight, and your queue depth alarm - if you have one - is about to be the only thing that tells you.</p>
+        <div class="callout example">
+          <span class="ex-pill">Use it like this</span>
+          <p>Whenever anyone proposes putting a queue, a buffer or a retry loop in a design, ask what W becomes on the worst day. If <span class="mono">λW</span> is bigger than the buffer, the design has a cliff in it, and cliffs do not appear in diagrams.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>SLI, SLO and error budget - the vocabulary you will be graded on<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>SLI</strong> - the indicator. A number you actually measure. "p95 dashboard load time."</li>
+          <li><strong>SLO</strong> - the objective. The line you drew on it. "p95 under 2 seconds, 99 percent of business days."</li>
+          <li><strong>Error budget</strong> - the one percent you are allowed to miss, expressed as permission. This is the part people skip, and it is the useful part: it turns "never fail" into a spendable amount, which is what makes it possible to ship anything at all.</li>
+          <li><strong>SLA</strong> - the same objective with money or a contract attached. Most internal platforms should have SLOs and no SLAs, because an SLA with no penalty is a wish with paperwork.</li>
+        </ul>
+        <p>Google's SRE book is the source for all four, and its most useful claim is the unpopular one: <strong>an SLO of 100 percent is a design error</strong>, because it removes every mechanism you had for deciding what to work on next.</p>
+      </div>
+    </details>
+
+    <div class="tryrow" data-fn="wordcount" data-multiline="1" data-title="Is your design doc actually one page?" data-hint="Paste the last design or proposal doc you wrote" data-seed="We propose to modernise the data platform by adopting a best-in-class cloud-native lakehouse architecture that will enable real-time insights and unlock the full value of our data assets across the organisation." data-cta="Measure it"></div>
+
+    <p>The seeded sentence above is 31 words and contains zero numbers, zero owners and zero consequences. It could be about any company on earth. That is the tell: a design document that would survive a find-and-replace of the company name is not a design document, it is a mood.</p>
+  </section>
+
+  <!-- ============ DEMO ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Write Daybreak's first page, then price it</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">You are going to write five short blocks. Not prose - five blocks, each of which is mostly numbers. This page is the thing sessions 2 to 8 keep adding to, and in session 8 it is the thing you defend.</p>
+
+    <div class="tick" data-stages="Problem|Constraints|Options|Decision|Consequence" data-title="The one-page design doc, in five blocks" data-foot="Five blocks. If any of them needs a second page, the decision is too big and should be two decisions.">
+      <p class="tick-note" data-stage="0"><b>Problem.</b> Two sentences, in the language of the person who complained. Who is hurting, when, and how you would know it stopped. No technology words are allowed in this block at all.</p>
+      <p class="tick-note" data-stage="1"><b>Constraints.</b> The four meters with units: p95 latency, maximum data age, monthly budget, and blast radius. Plus the constraints you did not choose - the team is three people, the company is on one cloud, there is no on-call rota.</p>
+      <p class="tick-note" data-stage="2"><b>Options.</b> At least three, and one of them must be "do nothing, and here is what that costs". If you cannot write a fair version of an option you dislike, you do not yet understand it well enough to reject it.</p>
+      <p class="tick-note" data-stage="3"><b>Decision.</b> One paragraph. Which option, and the single sentence of reasoning that would survive being quoted back at you in a year.</p>
+      <p class="tick-note" data-stage="4"><b>Consequence.</b> What gets worse. Every real decision makes something worse, and the doc that admits which thing is the doc people trust.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><p><strong>Write the problem block for Daybreak.</strong> Here is the raw complaint: <em>"Revenue by SKU takes forever, and last Tuesday it was blank all morning. Also finance says our number is wrong."</em> That is three problems. Write two sentences that name only the one you are solving first, and say why that one.</p></div>
+      <div class="step"><p><strong>Fill in the four meters.</strong> p95 latency, maximum data age, monthly budget, blast radius. If you do not know a number, write your guess and the name of the person who confirms it. A named guess is a design input. An unnamed one is a liability.</p></div>
+      <div class="step"><p><strong>Do the arithmetic.</strong> 18,000 orders a day, 6 rows each, 400 bytes a row. Rows per year, bytes per year, peak writes per second at a 4x lunch peak. Write the three numbers down. They should take you under three minutes.</p></div>
+      <div class="step"><p><strong>Now price the options below.</strong> The meter starts at Daybreak's current bill. Every architecture decision on the list is a real line item, and the numbers are the same ones the session 5 simulator uses. Switch on the ones you would propose for a dashboard four people open at 08:40.</p></div>
+      <div class="step"><p><strong>Switch on "just buy a bigger box" last.</strong> Look at what it costs against what marts cost. Then look at the fact that it moves no other meter at all. This is the single most commonly proposed option in real rooms, and this is why it keeps losing.</p></div>
+      <div class="step"><p><strong>Write the consequence block.</strong> Whatever you chose, one thing got worse. For most of these it is data freshness - you are about to make Daybreak's numbers a day old in exchange for a dashboard that loads. Write that sentence honestly. Session 3 is entirely about that trade.</p></div>
+      <div class="step"><p><strong>Read it out loud in under 90 seconds.</strong> If you cannot, it is not one page yet. Cut the option you were never going to choose and the paragraph that was there to sound thorough.</p></div>
+    </div>
+
+    <div class="stakes" data-base="1180" data-unit="$/month" data-lower-is-better="1" data-title="Daybreak's platform bill, as you add decisions" data-foot="These are the exact cost lines the session 5 tradeoff board uses. Cost is the only meter that is purely additive, which is why it is the one people argue about.">
+      <label><input type="checkbox" data-delta="260"> Read replica so analytics stops fighting checkout</label>
+      <label><input type="checkbox" data-delta="420"> Columnar warehouse, loaded nightly</label>
+      <label><input type="checkbox" data-delta="180"> Incremental micro-batch every 15 minutes</label>
+      <label><input type="checkbox" data-delta="140"> Pre-aggregated marts for the dashboard</label>
+      <label><input type="checkbox" data-delta="60"> Data contracts checked in CI</label>
+      <label><input type="checkbox" data-delta="90"> Retries, dead-letter queue, idempotent writes</label>
+      <label><input type="checkbox" data-delta="150"> Dependency-aware orchestrator with SLAs</label>
+      <label><input type="checkbox" data-delta="980" data-trap="1"> Just buy a bigger box instead of designing anything</label>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>If you take one thing from tonight.</strong> Write the four meters down with units before you draw a single box. Every argument you will have for the next seven sessions is an argument about which of those four to spend, and you cannot have that argument without the numbers.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">Homework</span>
+      <h2>Before session 2</h2>
+      <span class="tag exercise">25 min</span>
+    </div>
+    <ol>
+      <li><strong>Pick a real system you are responsible for or annoyed by.</strong> It does not have to be a data platform. A report, a service, a spreadsheet everyone depends on. That is your parallel project for the whole course.</li>
+      <li><strong>Write its four meters.</strong> p95, maximum acceptable data age, monthly cost, blast radius. Where you do not know, write the guess and the name of the person who could tell you. Then actually go and ask one of them.</li>
+      <li><strong>Do the arithmetic once.</strong> Volume per day, size per item, peak rate. Find the multiplication nobody has done and do it.</li>
+      <li><strong>Ask one person the freshness question properly.</strong> Not "how fresh does this need to be" but "what would you do differently if it arrived an hour earlier". Write down the answer verbatim. It is usually the most useful sentence in the whole design.</li>
+      <li><strong>Draft the problem block only.</strong> Two sentences, no technology words. Bring it to session 2, because session 2 is about drawing the line around it.</li>
+    </ol>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 1 gets stamped in your passport.</p>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · A stakeholder says "the dashboard is slow and we need real-time". What is the first thing you do?</p>
+      <button class="qopt" type="button">A · Size a streaming platform, since real-time is the stated requirement</button>
+      <button class="qopt" type="button">B · Separate the complaint into which of latency, freshness, correctness and availability is actually failing, and get a number on each</button>
+      <button class="qopt" type="button">C · Buy more capacity for the current database while you investigate</button>
+      <p class="qwhy">"Slow" and "real-time" are two different meters and they were said in one breath. Latency is fixed with marts and column stores. Freshness is fixed by loading more often. Doing the second when the problem is the first ships an expensive system that is still slow.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Why design to p95 rather than to the average?</p>
+      <button class="qopt" type="button">A · Averages are harder to measure accurately</button>
+      <button class="qopt" type="button">B · p95 is the industry standard, so reviewers expect it</button>
+      <button class="qopt" type="button">C · The average is an experience nobody has, and the slow tail is what people notice, complain about and remember</button>
+      <p class="qwhy">Dean and Barroso's "The Tail at Scale" made the argument at Google scale: once a request fans out across components, the slowest one sets what the user feels. A mean that looks healthy can hide a tail that is the entire reason someone opened a ticket.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · Your design doc has four options and every one of them is described favourably except the one you dislike, which gets two dismissive lines. What is the problem?</p>
+      <button class="qopt" type="button">A · If you cannot write a fair version of an option, you do not understand it well enough to reject it, and a reviewer will spot that before you do</button>
+      <button class="qopt" type="button">B · Four options is too many for one document</button>
+      <button class="qopt" type="button">C · Nothing, as long as your recommendation is well argued</button>
+      <p class="qwhy">A design review is not persuasion, it is evidence. The fastest way to lose a room is to be caught strawmanning the option someone in it proposed. Writing the fair version costs you five minutes and is also, occasionally, how you change your own mind.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ OFFICIAL COVERAGE ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Non-functional requirements as the design input</span><span class="note">Latency, freshness, cost and blast radius, each with a unit and an owner. The four meters the whole course is scored on</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Back-of-envelope capacity and cost estimation</span><span class="note">Daybreak worked end to end: 18,000 orders a day to 15.8 GB a year to about 5 writes a second at peak</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Little's Law</span><span class="note">L = λW, applied to a queue whose consumer slows down, and used as the standard test for any buffered design</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The Tail at Scale, Dean and Barroso, CACM 2013</span><span class="note">Why p95 and p99 are the design targets and the mean is the experience of nobody</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The one-page design doc</span><span class="note">Problem, constraints, options, decision, consequence. Built tonight, extended in every session, defended in session 8</span></div>
+      <div class="covered-row"><span class="status pill light">◐</span><span class="name">Google SRE: SLI, SLO, error budgets</span><span class="note">Covered as the vocabulary for "how good is good enough", including why a 100 percent SLO is a design error. The full practice stays with the SRE book</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Full source map with every URL: <span class="mono">materials/official-course-map.md</span> in this repo. Certificates, videos and assessments stay with the official providers.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 1 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>The four meters</b><span>p95 latency, maximum data age, monthly cost, blast radius. Units on every one, or it is not a requirement.</span></div>
+      <div class="cheat-item"><b>The freshness question</b><span>Not "how fresh". Ask "what would you do differently if it arrived an hour earlier". Usually: nothing.</span></div>
+      <div class="cheat-item"><b>Little's Law</b><span>L = λW. Ask what W becomes on the worst day. If λW exceeds the buffer, the design has a cliff.</span></div>
+      <div class="cheat-item"><b>Design to p95</b><span>The average is nobody's experience. The tail is what gets you the ticket.</span></div>
+      <div class="cheat-item"><b>Five blocks</b><span>Problem, constraints, options, decision, consequence. Under 90 seconds read aloud, or it is not one page.</span></div>
+      <div class="cheat-item"><b>The bigger box</b><span>$980 a month, moves one meter by 18 percent, moves nothing else. Marts cost $140 and do three times more.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p>Tonight you wrote down what the system has to do. Session 2 draws the lines: which team owns which piece, what each one promises the others in writing, and why the correct place for a schema change to fail is <strong>the producer's build</strong>, not your dashboard at 08:40 on a Tuesday.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 1 of 8 · learn-system-design-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="../index.html">← All sessions</a> &nbsp;·&nbsp; <a href="02-boundaries-and-contracts.html">Next: Boundaries and contracts →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=2"></script>
+</body>
+</html>

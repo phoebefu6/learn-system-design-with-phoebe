@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Session 8 of 8. ADRs in four parts, one-way and two-way doors, and the four questions a good reviewer asks. Capstone: take apart a deliberately broken Daybreak architecture and write the decision records that fix it.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="The design review - learn system design with phoebe">
+<meta property="og:description" content="Session 8 of 8. Write it down so it survives, then defend it in a room.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/courses/08-the-design-review.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The design review - learn system design with phoebe">
+<meta name="twitter:description" content="Session 8 of 8. ADRs, one-way doors, and the capstone review.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Session 8 · The design review - learn system design with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=2">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-system-design-with-phoebe</a> / Session 8 of 8</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn System Design with Phoebe · Session 8 of 8</div>
+    <h1>The design <span class="accent">review</span></h1>
+    <p class="sub">Seven sessions of decisions are worth nothing if the reasoning evaporates the moment you move teams. Tonight: the four-part decision record that survives you, the difference between a door you can walk back through and one you cannot, the four questions any good reviewer will ask, and a capstone where you take apart a deliberately broken Daybreak architecture and write the records that fix it. Then you grade your own design as a ship-or-not decision, which is what a review actually is.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Hardest</span>
+      <span class="chip audience">Bring the design doc you have been building since session 1</span>
+      <span class="chip audience">Final scorecard tonight</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-18 · ADRs, doors, and the four questions</span>
+      <span class="a3" style="flex:5">18-40 · Capstone: review the broken Daybreak</span>
+      <span class="a4" style="flex:1">40-45 · Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Where we are</h2>
+    </div>
+    <p class="lede">You have made seven decisions. Every one of them spent a meter to buy another. Tonight you write them down in a form that answers, two years from now, the only question anybody will ask about them: <strong>why did they do it that way?</strong></p>
+
+    <div class="legend">
+      <span class="pill">🎫 Clear all three quiz questions to stamp your passport</span>
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A complete ADR set for Daybreak, five defects found in a broken architecture, a ship-or-not grade on your own document, and a way of answering "what happens when this fails" that does not require you to bluff.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why the reasoning matters more than the diagram<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Diagrams age badly and are replaced without ceremony. Reasoning ages well and is almost never recorded. The result is the most common failure in this entire discipline: a team inherits a system, cannot see why any of it is the way it is, assumes the constraints no longer apply, and either rebuilds something that was already correct or removes the one thing that was holding it together.</p>
+        <p>An ADR is a defence against exactly that, and it costs one page. Not a design doc - a design doc argues a whole shape. An ADR records <strong>one decision</strong>, with its context and its consequences, and it is immutable: when it stops being right you write a new one that supersedes it, and you leave the old one where it is.</p>
+        <p>That immutability is the whole trick. An edited record tells you what someone currently believes. A superseded record tells you what changed and when, which is the thing you actually needed.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the record</span>
+      <h2>The four-part decision record, and what goes wrong in each part</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">Status, context, decision, consequences. Four headings, one page, and each one has a characteristic way of being written badly.</p>
+
+    <div class="hotspot" data-title="One ADR, and the four places it usually goes wrong">
+      <div class="hs-mock">
+        <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A one-page architecture decision record showing status, context, decision and consequences sections">
+          <style>
+            .s8dT { font: 800 13px Inter, sans-serif; fill: #08324A; }
+            .s8dH { font: 700 12px Inter, sans-serif; fill: #08324A; }
+            .s8dB { font: 400 11.5px Inter, sans-serif; fill: #5B6B77; }
+          </style>
+          <rect x="150" y="20" width="580" height="284" rx="10" fill="#fff" stroke="#DEE7EC" stroke-width="1.5"/>
+          <text class="s8dT" x="172" y="48">ADR-004 · Load the warehouse incrementally, not nightly</text>
+
+          <text class="s8dH" x="172" y="82">Status</text>
+          <text class="s8dB" x="172" y="102">Accepted, 2026-08-26. Supersedes ADR-002</text>
+
+          <text class="s8dH" x="172" y="134">Context</text>
+          <text class="s8dB" x="172" y="154">Nightly loading met the latency budget and put data 24 hours old</text>
+          <text class="s8dB" x="172" y="172">in front of a team that compares against yesterday by 08:40</text>
+
+          <text class="s8dH" x="172" y="204">Decision</text>
+          <text class="s8dB" x="172" y="224">Micro-batch every 15 minutes, partition-replace per interval</text>
+
+          <text class="s8dH" x="172" y="256">Consequences</text>
+          <text class="s8dB" x="172" y="276">Cost +$180/mo. Every load must be idempotent. Backfill window</text>
+          <text class="s8dB" x="172" y="294">now bounded by 90-day raw retention, which we accept</text>
+        </svg>
+      </div>
+      <button class="hs-pin" style="--x:20%;--y:30%" data-title="Status: the part people edit"
+              data-cap="An ADR is immutable. When it stops being right you write a new one that supersedes it and leave this one alone. An edited record loses the only thing it was for - the history of what changed."></button>
+      <button class="hs-pin" style="--x:20%;--y:47%" data-title="Context: the part that gets skipped"
+              data-cap="The constraints as they were at the time, including the ones that have since gone away. This is the section that stops a future team from rebuilding something that was already right for reasons they cannot see."></button>
+      <button class="hs-pin" style="--x:20%;--y:69%" data-title="Decision: the part that gets padded"
+              data-cap="One sentence, active voice, no hedging. If it needs three paragraphs it is more than one decision and should be more than one record."></button>
+      <button class="hs-pin" style="--x:20%;--y:87%" data-title="Consequences: the part that gets sanitised"
+              data-cap="Both directions, and the negative one first. A record with only good consequences is marketing, and every reviewer knows it on sight."></button>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>One-way doors and two-way doors<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The most useful triage question in design: <strong>how expensive is it to walk this back?</strong> Decisions are not all the same weight, and treating them as if they are is why some reviews take three weeks and some take three minutes - usually the wrong three each.</p>
+        <table class="clean">
+          <tr><th>Door</th><th>Examples</th><th>How to treat it</th></tr>
+          <tr><td>Two-way</td><td>The orchestrator, the BI tool, the load interval, a mart's shape</td><td>Decide fast, write one paragraph, move. Time spent arguing exceeds the cost of being wrong</td></tr>
+          <tr><td>One-way</td><td>The partition key, the identifier scheme, where PII is allowed to land, the tokenization boundary</td><td>Slow down. Write the full record. Get a second reader. These are the ones you live with</td></tr>
+        </table>
+        <div class="callout tip">
+          <p>The tell for a one-way door is usually <strong>data</strong>: anything that determines the shape of stored history is hard to reverse, because reversing it means rewriting the past. Anything that only determines how you process or present is usually cheap to change. Session 6's tokenization boundary is the most one-way decision in this whole course.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The four questions a good reviewer asks<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>"What is the requirement, in numbers?"</strong> If the answer is adjectives, the review stops here and that is a good outcome. Session 1.</li>
+          <li><strong>"What did you reject, and why?"</strong> They are testing whether you understand the option you did not pick. A strawman here costs you the room.</li>
+          <li><strong>"What happens when this fails?"</strong> The answer must name a failure class, a mechanism and a blast radius. "It retries" is not an answer if the failure is permanent. Session 5.</li>
+          <li><strong>"What gets worse?"</strong> If nothing gets worse, you have not finished analysing. Name it before they do - it is the single fastest way to be trusted in a design review.</li>
+        </ul>
+        <p>And the one question you should ask them: <strong>"which of these is a one-way door in your view?"</strong> It surfaces disagreement about weight rather than about substance, which is where most stuck reviews actually are.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ DEMO ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Capstone</span>
+      <h2>Review the broken Daybreak</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Below is a real-looking proposal from a team that has read all the right blog posts. It has five defects. Find them, then write the decision records that fix them.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A proposed Daybreak architecture with streaming ingestion, a lake, a warehouse and dashboards, with per-table access grants and no contract layer">
+        <style>
+          .s8pH { font: 700 12px Inter, sans-serif; fill: #08324A; }
+          .s8pN { font: 400 11.5px Inter, sans-serif; fill: #5B6B77; }
+          .s8pT { font: 800 12px Inter, sans-serif; fill: #14202A; }
+        </style>
+        <text class="s8pT" x="40" y="30">PROPOSAL v3 · "Daybreak Data Platform Modernisation"</text>
+
+        <rect x="40" y="48" width="152" height="58" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s8pH" x="54" y="72">Kafka, all tables</text>
+        <text class="s8pN" x="54" y="92">CDC off production</text>
+
+        <rect x="216" y="48" width="152" height="58" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s8pH" x="230" y="72">Lake, raw zone</text>
+        <text class="s8pN" x="230" y="92">retained forever</text>
+
+        <rect x="392" y="48" width="152" height="58" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s8pH" x="406" y="72">Warehouse</text>
+        <text class="s8pN" x="406" y="92">appends every run</text>
+
+        <rect x="568" y="48" width="152" height="58" rx="9" fill="#EEF6FB" stroke="#0C4A6E"/>
+        <text class="s8pH" x="582" y="72">42 dashboards</text>
+        <text class="s8pN" x="582" y="92">grants per table</text>
+
+        <rect x="744" y="48" width="96" height="58" rx="9" fill="#FEF6E4" stroke="#F0A202"/>
+        <text class="s8pH" x="758" y="72">LLM Q&amp;A</text>
+        <text class="s8pN" x="758" y="92">no budget</text>
+
+        <path d="M192 77 L216 77 M368 77 L392 77 M544 77 L568 77 M720 77 L744 77" stroke="#C3D2DC" stroke-width="2"/>
+
+        <rect x="40" y="130" width="800" height="132" rx="10" fill="#F8FAFB" stroke="#DEE7EC"/>
+        <text class="s8pH" x="60" y="156">Stated in the proposal, word for word:</text>
+        <text class="s8pN" x="60" y="180">"Real-time streaming for all tables, enabling real-time insights across the business."</text>
+        <text class="s8pN" x="60" y="202">"Raw data retained indefinitely so we never lose optionality."</text>
+        <text class="s8pN" x="60" y="224">"Cron schedule tuned so each stage starts after the previous one typically finishes."</text>
+        <text class="s8pN" x="60" y="246">"Budget: to be confirmed with finance. Owner: the Data Platform team."</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - every sentence in this proposal has appeared in a real document somewhere</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The five defects, once you have had your own go<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Try it yourself first - twelve minutes, list what you would raise. Then compare.</p>
+        <ol>
+          <li><strong>Streaming with no requirement behind it.</strong> "Real-time insights" names no decision that changes inside the window and nobody who is awake to take it. On the session 5 board this configuration costs $900 a month extra and adds 12 points of blast radius, and it fails the morning-dashboard budget it was built for. Session 3.</li>
+          <li><strong>Retained indefinitely is a deletion design, made by accident.</strong> Keeping raw personal data forever in mixed immutable objects means a deletion request cannot be honoured without rewriting history. "Optionality" is the word doing the damage here. Session 6.</li>
+          <li><strong>Cron tuned so each stage starts after the previous "typically" finishes.</strong> That word is the whole defect. On the day the extract runs long, the transform reads stale input, exits zero and reports success. Session 4.</li>
+          <li><strong>The warehouse appends every run.</strong> Non-idempotent. One retry doubles revenue, and there is a retry in every system eventually. Session 4.</li>
+          <li><strong>No contract layer, and grants per table.</strong> 42 assets times 6 roles is 252 access decisions nobody can hold, and an upstream rename reaches 82 percent of everything. The cheapest fix on the board, missing entirely. Sessions 2 and 6.</li>
+        </ol>
+        <p>The sixth thing, which is not a defect but is the one that sinks the proposal in the room: <strong>"budget to be confirmed" and "owner: the Data Platform team"</strong>. No number and no name. A reviewer does not need to understand any of the technology to reject that.</p>
+      </div>
+    </details>
+
+    <div class="steps">
+      <div class="step"><p><strong>Read the proposal and list what you would raise, in twelve minutes.</strong> Write them as questions rather than verdicts - "what decision changes if this is a minute fresher?" beats "streaming is wrong", and it is also how you find out you were the one who was wrong.</p></div>
+      <div class="step"><p><strong>Sort your list into one-way and two-way doors.</strong> Retention and the identifier scheme are one-way. The orchestrator choice is two-way. Spend the room's time accordingly - this is the skill that separates a useful reviewer from an exhausting one.</p></div>
+      <div class="step"><p><strong>Write ADR-001 for the one-way door you care about most.</strong> Four headings, one page, negative consequence first. If you cannot fit it on a page, split the decision.</p></div>
+      <div class="step"><p><strong>Write the superseding record.</strong> Take one decision you made earlier in the course and write the ADR that replaces it, with a status line that names what it supersedes. Practising this once is what makes it a habit rather than an edit.</p></div>
+      <div class="step"><p><strong>Rehearse the failure answer out loud.</strong> "When the upstream schema changes, N assets break, we find out in M minutes, and the mechanism is X." Say it. The gap between writing that and saying it is where bluffing lives.</p></div>
+      <div class="step"><p><strong>Now grade your own document below.</strong> This is a ship-or-not gate, not a progress check. The five rows are the things that would embarrass you in a room.</p></div>
+    </div>
+
+    <div class="scorecard" data-title="Final scorecard: is this design ready to review?" data-foot="A ship-or-not gate. Any row at 0 is a thing a reviewer will find in the first ten minutes, and finding it yourself is much cheaper.">
+      <div class="sc-row"><div class="sc-q">Every decision has a written consequence that is negative
+        <em>Cost, freshness, complexity, coupling. A design where nothing got worse has not been analysed, and it reads that way.</em></div></div>
+      <div class="sc-row"><div class="sc-q">You can answer "what happens when this fails" with a class, a mechanism and a number
+        <em>Not "it retries". Which failure class, which mechanism, how many assets, how long until anyone knows.</em></div></div>
+      <div class="sc-row"><div class="sc-q">The one-way doors are identified and treated differently from the rest
+        <em>Retention, partition keys, identifier schemes, the PII boundary. If everything got the same weight, the weighting is missing.</em></div></div>
+      <div class="sc-row"><div class="sc-q">Every cost line has a team name against it
+        <em>"The platform budget" is the answer that becomes an unexplainable line item in eighteen months.</em></div></div>
+      <div class="sc-row"><div class="sc-q">The rejected option is written well enough that its advocate would recognise it
+        <em>The single fastest way to lose a room is to be caught strawmanning something somebody in it proposed.</em></div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>If you take one thing from the whole course.</strong> Name what gets worse, out loud, before anybody asks. It is the cheapest credibility available to an architect and almost nobody spends it.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="exercise">
+    <div class="section-kicker">
+      <span class="klabel">After the course</span>
+      <h2>Where to go from here</h2>
+      <span class="tag exercise">ongoing</span>
+    </div>
+    <ol>
+      <li><strong>Write one real ADR this week.</strong> For a decision already made, retroactively. It will take twenty minutes and you will discover at least one consequence nobody had said out loud.</li>
+      <li><strong>Put a contract in one producer's CI.</strong> The cheapest lever in the course. One YAML file and one CI job, on the table that has broken you most often.</li>
+      <li><strong>Add one data SLA with a clock time and something watching it.</strong> Then wait for the first time it fires and note how much earlier you knew.</li>
+      <li><strong>Run the profile flip on a real design.</strong> Ask what would have to change if the freshness requirement moved by an order of magnitude. The answer tells you how much of your architecture rests on one sentence.</li>
+      <li><strong>Then go and build it.</strong> <span class="mono">learn-data-engineering-with-phoebe</span> for the pipeline, <span class="mono">learn-data-warehouse-with-phoebe</span> for the warehouse, <span class="mono">learn-dataops-with-phoebe</span> for running it. You now know why you are building what you are building, which is the part those courses assume.</li>
+    </ol>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+    <p>Clear all three and session 8 gets stamped in your passport - eight of eight.</p>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">1 · A decision recorded in an ADR turns out to be wrong two years later. What do you do to the record?</p>
+      <button class="qopt" type="button">A · Edit it so the documentation reflects current reality</button>
+      <button class="qopt" type="button">B · Leave it untouched and write a new record that supersedes it, naming what changed</button>
+      <button class="qopt" type="button">C · Delete it, since a wrong record is worse than no record</button>
+      <p class="qwhy">An ADR is immutable by design. An edited record tells you only what someone currently believes; a superseded one tells you what changed and when, which is the thing a future team actually needs in order not to repeat the reasoning from scratch.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">2 · Which of these is most clearly a one-way door?</p>
+      <button class="qopt" type="button">A · Which orchestrator you run</button>
+      <button class="qopt" type="button">B · Which BI tool the dashboards are built in</button>
+      <button class="qopt" type="button">C · Whether personal data is allowed to land in the raw zone in identifiable form</button>
+      <p class="qwhy">Anything that determines the shape of stored history is hard to reverse, because reversing it means rewriting the past. Orchestrators and BI tools are migrations, painful but bounded. Where PII was allowed to land is a decision you inherit permanently.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">3 · A reviewer asks "what happens when this fails?" and you answer "we have retries and a dead-letter queue". Why might that lose the room?</p>
+      <button class="qopt" type="button">A · It names mechanisms without naming a failure class, a blast radius or a detection time - and it is wrong for permanent failures like a schema change</button>
+      <button class="qopt" type="button">B · Retries and DLQs are considered outdated practice</button>
+      <button class="qopt" type="button">C · The reviewer wanted a diagram rather than a verbal answer</button>
+      <p class="qwhy">The complete answer has three parts: which class of failure, which mechanism, and how many assets are affected for how long before anyone knows. Retries handle transient failures only, and a reviewer who has been on call will ask about the permanent ones next.</p>
+    </div>
+
+    <p class="quiz-score"></p>
+  </section>
+
+  <!-- ============ OFFICIAL COVERAGE ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Sources covered</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Architecture Decision Records</span><span class="note">Status, context, decision, consequences. Immutable and superseded rather than edited, with the characteristic failure of each section</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">One-way and two-way doors</span><span class="note">Reversibility as the triage question, with the data-shape tell for spotting a one-way door</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Surviving a design review</span><span class="note">The four questions a reviewer asks, the one question to ask back, and the three-part answer to "what happens when this fails"</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Capstone: the broken Daybreak proposal</span><span class="note">Five defects across sessions 2, 3, 4 and 6, plus the missing budget and owner that sinks it independently of any technology</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Final scorecard as a ship-or-not gate</span><span class="note">Five rows, each one a thing a reviewer finds in the first ten minutes</span></div>
+    </div>
+    <p class="mono" style="margin-top:14px">Full source map with every URL: <span class="mono">materials/official-course-map.md</span> in this repo. Certificates, videos and assessments stay with the official providers.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="cheat" id="cheatsheet">
+    <h3>Session 8 cheat sheet <span>· pin this</span></h3>
+    <div class="grid-2">
+      <div class="cheat-item"><b>Four headings</b><span>Status, context, decision, consequences. One page. Negative consequence first.</span></div>
+      <div class="cheat-item"><b>Supersede, never edit</b><span>An edited record loses the history, which was the only reason to keep it.</span></div>
+      <div class="cheat-item"><b>Doors have weights</b><span>Data shape is one-way. Processing and presentation are usually two-way. Spend the room's time accordingly.</span></div>
+      <div class="cheat-item"><b>The four questions</b><span>Requirement in numbers · what you rejected · what happens when it fails · what gets worse.</span></div>
+      <div class="cheat-item"><b>The failure answer</b><span>A class, a mechanism, a number. "It retries" fails on anything permanent.</span></div>
+      <div class="cheat-item"><b>Name it first</b><span>Say what gets worse before they ask. Cheapest credibility an architect can buy.</span></div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">You finished</span>
+    <p>Eight sessions, one platform, and a document that says why. The thing you can now do that you could not do in session 1 is not draw a better diagram - it is to say, in a room, exactly what you are spending and exactly what you are buying, with numbers, and to be right about the fact that the answer would change if the requirement did. Go and build it: <span class="mono">learn-data-engineering-with-phoebe</span>, <span class="mono">learn-data-warehouse-with-phoebe</span>, <span class="mono">learn-dataops-with-phoebe</span>.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <span>Session 8 of 8 · learn-system-design-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span><a href="07-ai-as-a-component.html">← Previous</a> &nbsp;·&nbsp; <a href="../index.html">All sessions →</a></span>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=2"></script>
+</body>
+</html>

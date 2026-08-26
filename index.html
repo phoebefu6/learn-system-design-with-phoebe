@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Eight sessions, one platform. Not what the layers are and not how to build the pipe - how to choose, and how to defend the choice in a room full of people who will have to live with it. Free, by Phoebe Fu.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Learn System Design with Phoebe">
+<meta property="og:description" content="Eight sessions architecting the Daybreak platform. Four meters, two requirement profiles, and the discovery that there is no best architecture.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Learn System Design with Phoebe">
+<meta name="twitter:description" content="Eight sessions architecting one platform. How to choose, and how to defend the choice.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-system-design-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Learn System Design with Phoebe</title>
+<link rel="stylesheet" href="assets/style.css?v=2">
+<style>
+
+  .stats-row { display: flex; gap: 2.4rem; margin-top: 1.5rem; flex-wrap: wrap; }
+  .stat b { display: block; font-size: 2.1rem; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: .72rem; opacity: .85; text-transform: uppercase; letter-spacing: .09em; font-weight: 600; }
+
+  .course-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .course-card {
+    border: 1px solid var(--hairline);
+    border-top: 4px solid var(--diff, var(--indigo));
+    border-radius: var(--radius);
+    padding: 1.2rem 1.3rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    text-decoration: none;
+    color: var(--ink);
+    background: #fff;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+    position: relative;
+  }
+  .course-card:hover { border-color: var(--indigo-soft); border-top-color: var(--diff, var(--indigo)); box-shadow: 0 8px 28px rgba(12,74,110,.14); transform: translateY(-3px); }
+  .course-card .cicon { font-size: 1.7rem; line-height: 1; }
+  .course-card .cnum { font-size: .72rem; font-weight: 700; color: var(--indigo); text-transform: uppercase; letter-spacing: .1em; }
+  .course-card h3 { font-size: 1.05rem; font-weight: 800; line-height: 1.3; }
+  .course-card p { font-size: .85rem; color: var(--muted); flex: 1; }
+  .course-card .meta { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+  .diff-legend { display: flex; gap: 1rem; margin-top: 1.6rem; font-size: .74rem; color: var(--muted); font-weight: 600; flex-wrap: wrap; }
+  .diff-legend i { display: inline-block; width: .85rem; height: .35rem; border-radius: 999px; margin-right: .35rem; vertical-align: middle; }
+
+  .paths { margin-top: 2.6rem; }
+  .paths h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .3rem; }
+  .paths .plede { color: var(--muted); font-size: .92rem; margin-bottom: .8rem; }
+  .path { display: flex; gap: .55rem; align-items: center; padding: .75rem 0; border-bottom: .5px solid var(--hairline); flex-wrap: wrap; }
+  .path:last-child { border-bottom: none; }
+  .path b { min-width: 15.5rem; font-size: .9rem; }
+  .path .pstep { background: var(--indigo-50); color: var(--indigo); border-radius: 999px; padding: .16rem .68rem; font-weight: 700; font-size: .8rem; text-decoration: none; transition: all .12s ease; }
+  .path .pstep:hover { background: var(--indigo); color: #fff; }
+  .path .parr { color: var(--faint); font-weight: 700; }
+
+  .mm-section { margin-top: 1.6rem; }
+  .mm-section h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .2rem; }
+  .mm-section .mm-lede { color: var(--muted); font-size: .92rem; margin-bottom: .4rem; }
+  .mm-wrap { border: 1px solid var(--hairline); border-radius: var(--radius); background: linear-gradient(180deg,#fff,#F4F9FC); padding: .6rem; overflow-x: auto; }
+  .mm-svg { width: 100%; height: auto; display: block; max-width: 60rem; margin: 0 auto; min-width: 34rem; }
+  .mm-link { cursor: pointer; text-decoration: none; }
+  .mm-node rect { transition: opacity .15s ease, filter .15s ease; }
+  .mm-node text { pointer-events: none; }
+  .mm-link:hover .mm-node rect { filter: brightness(1.06); }
+  .mm-edge { transition: opacity .15s ease; }
+
+  .not-this { border: 1px solid var(--hairline); border-left: 4px solid var(--amber); border-radius: var(--radius); background: #fff; padding: 1.1rem 1.3rem; margin-top: 1.2rem; }
+  .not-this h3 { font-size: .95rem; font-weight: 800; margin-bottom: .5rem; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn with Phoebe · System &amp; Product Design</div>
+    <h1>Learn <span class="accent">System Design</span> with Phoebe</h1>
+    <p class="sub">Eight sessions, 45 minutes each, and one platform you architect across all of them. Every other course on this shelf teaches you to build a thing. This one teaches you to decide which thing, on evidence, under a budget, in front of people who will have to live with the answer. There is no best architecture in here. There is a requirement, four meters that fight each other, and a decision you have to sign your name to.</p>
+    <div class="stats-row">
+      <div class="stat"><b data-count="8">8</b><span>sessions</span></div>
+      <div class="stat"><b data-count="4">4</b><span>meters that fight</span></div>
+      <div class="stat"><b data-count="2">2</b><span>requirement profiles</span></div>
+      <div class="stat"><b data-count="9">9</b><span>levers on the board</span></div>
+      <div class="stat"><b data-count="45">45</b><span>min per session</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section">
+    <div class="paths" style="margin-top:0">
+      <h2>The eight sessions 🎛️ <span style="font-size:.85rem;font-weight:600;color:var(--muted)">· one platform, architected across all of them</span></h2>
+      <p class="plede">The running project is <strong>Daybreak</strong>, the coffee-subscription brand you already met in the SQL and warehouse courses. It is three years old, it has one Postgres, and its dashboards query production. You are the person who has to decide what it becomes next, and write down why.</p>
+    </div>
+
+    <div class="course-grid">
+      <a class="course-card" href="courses/01-requirements-to-constraints.html" style="--diff:#34D399">
+        <span class="cicon">📐</span>
+        <span class="cnum">Session 1 · easy</span>
+        <h3>Requirements to constraints</h3>
+        <p>Nobody hands you an architecture problem. They hand you a complaint. Turning "the dashboard is slow" into four numbers you can design against, on paper, before any technology is named.</p>
+        <span class="meta"><span class="pill amber">▶ Start here</span></span>
+      </a>
+      <a class="course-card" href="courses/02-boundaries-and-contracts.html" style="--diff:#34D399">
+        <span class="cicon">🧱</span>
+        <span class="cnum">Session 2 · easy</span>
+        <h3>Boundaries and contracts</h3>
+        <p>Where one team's problem stops being another team's problem. The three couplings that actually hurt, what belongs in a data contract, and why the producer's build should go red instead of your dashboard.</p>
+        <span class="meta"><span class="pill">who owns what</span></span>
+      </a>
+      <a class="course-card" href="courses/03-storage-and-serving.html" style="--diff:#FBBF24">
+        <span class="cicon">🗄️</span>
+        <span class="cnum">Session 3 · medium</span>
+        <h3>Storage and serving</h3>
+        <p>Row store, column store, lake, stream - chosen by access pattern, not by fashion. The freshness-cost curve, PACELC, and why designing to the average latency is designing for nobody.</p>
+        <span class="meta"><span class="pill">the curve</span></span>
+      </a>
+      <a class="course-card" href="courses/04-orchestration-topology.html" style="--diff:#FBBF24">
+        <span class="cicon">🕸️</span>
+        <span class="cnum">Session 4 · medium</span>
+        <h3>Orchestration topology</h3>
+        <p>Cron knows what time it is. An orchestrator knows what finished. Idempotency as a design property, backfills that are boring, and SLAs on data rather than on services.</p>
+        <span class="meta"><span class="pill">what finished</span></span>
+      </a>
+      <a class="course-card" href="courses/05-designing-for-failure.html" style="--diff:#FB923C">
+        <span class="cicon">🎛️</span>
+        <span class="cnum">Session 5 · hands-on</span>
+        <h3>Designing for failure</h3>
+        <p>The tradeoff board. Nine levers, four meters, two requirements - and the moment where switching the requirement without touching a lever flips the verdict. Plus: retries do not fix a contract break.</p>
+        <span class="meta"><span class="pill amber">★ the simulator</span></span>
+      </a>
+      <a class="course-card" href="courses/06-the-governed-shell.html" style="--diff:#FB923C">
+        <span class="cicon">🛡️</span>
+        <span class="cnum">Session 6 · hands-on</span>
+        <h3>The governed shell</h3>
+        <p>Access, lineage, PII boundaries, retention, deletion and cost attribution - designed at the boundary rather than bolted on afterwards, because deletion cannot be retrofitted into a lake.</p>
+        <span class="meta"><span class="pill">every copy is an obligation</span></span>
+      </a>
+      <a class="course-card" href="courses/07-ai-as-a-component.html" style="--diff:#F87171">
+        <span class="cicon">🤖</span>
+        <span class="cnum">Session 7 · hardest</span>
+        <h3>AI as a system component</h3>
+        <p>A model is a latency budget, a cost line and a failure mode. Retrieval indexes go stale, agent loops have unbounded cost, and DORA 2025 found AI raises throughput and instability at the same time.</p>
+        <span class="meta"><span class="pill">the small box</span></span>
+      </a>
+      <a class="course-card" href="courses/08-the-design-review.html" style="--diff:#F87171">
+        <span class="cicon">📝</span>
+        <span class="cnum">Session 8 · hardest</span>
+        <h3>The design review</h3>
+        <p>ADRs, one-way and two-way doors, and the four questions a good reviewer asks. Capstone: take apart a deliberately broken Daybreak architecture and write the decision record that fixes it.</p>
+        <span class="meta"><span class="pill amber">🔒 the capstone</span></span>
+      </a>
+    </div>
+
+    <div class="diff-legend">
+      <span><i style="background:#34D399"></i>easy - everyone</span>
+      <span><i style="background:#FBBF24"></i>medium</span>
+      <span><i style="background:#FB923C"></i>hands-on</span>
+      <span><i style="background:#F87171"></i>hardest</span>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="paths" style="margin-top:0">
+      <h2>Your passport 🎫</h2>
+      <p class="plede">Clear all three quiz questions in a session and it gets stamped. Eight stamps means you have argued your way through every meter on the board at least once. Stamps live in this browser only.</p>
+    </div>
+    <div class="pp-strip"></div>
+  </section>
+
+  <section class="section">
+    <div class="not-this">
+      <h3>What this course is not, so you land in the right place 🧭</h3>
+      <table class="clean">
+        <tr><th>If your question is</th><th>Go here instead</th></tr>
+        <tr><td>What layers does a data platform have, and what do they cost?</td><td><span class="mono">learn-ai-infra-with-phoebe</span> - an inventory and an investment case</td></tr>
+        <tr><td>How do I build the ingestion-to-serving pipeline?</td><td><span class="mono">learn-data-engineering-with-phoebe</span> - construction, on real DuckDB</td></tr>
+        <tr><td>How do I test, deploy and operate it?</td><td><span class="mono">learn-dataops-with-phoebe</span> - CI/CD, MLOps, DBOps</td></tr>
+        <tr><td>What should the schema look like?</td><td><span class="mono">learn-data-modeling-with-phoebe</span> - dimensions and facts</td></tr>
+        <tr><td><strong>Which of these do I choose, and how do I defend it?</strong></td><td><strong>you are in the right place</strong></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="paths">
+      <h2>Choose your path 🗺️</h2>
+      <p class="plede">Three doors into the same conviction: an architecture is not a diagram, it is a set of trades you can name and defend.</p>
+      <div class="path"><b>⏱️ I have ninety minutes</b>
+        <a class="pstep" href="courses/01-requirements-to-constraints.html">1</a><span class="parr">→</span>
+        <a class="pstep" href="courses/05-designing-for-failure.html">5</a>
+        <span style="font-size:.82rem;color:var(--muted)">turn a complaint into four numbers, then watch the numbers fight on the board</span>
+      </div>
+      <div class="path"><b>🧱 I keep getting broken by other teams</b>
+        <a class="pstep" href="courses/02-boundaries-and-contracts.html">2</a><span class="parr">→</span>
+        <a class="pstep" href="courses/04-orchestration-topology.html">4</a><span class="parr">→</span>
+        <a class="pstep" href="courses/05-designing-for-failure.html">5</a>
+        <span style="font-size:.82rem;color:var(--muted)">contracts, dependency-aware orchestration, and blast radius as a number</span>
+      </div>
+      <div class="path"><b>🎛️ The whole build</b>
+        <a class="pstep" href="courses/01-requirements-to-constraints.html">1</a><span class="parr">→</span>
+        <a class="pstep" href="courses/02-boundaries-and-contracts.html">2</a><span class="parr">→</span>
+        <a class="pstep" href="courses/03-storage-and-serving.html">3</a><span class="parr">→</span>
+        <a class="pstep" href="courses/04-orchestration-topology.html">4</a><span class="parr">→</span>
+        <a class="pstep" href="courses/05-designing-for-failure.html">5</a><span class="parr">→</span>
+        <a class="pstep" href="courses/06-the-governed-shell.html">6</a><span class="parr">→</span>
+        <a class="pstep" href="courses/07-ai-as-a-component.html">7</a><span class="parr">→</span>
+        <a class="pstep" href="courses/08-the-design-review.html">8</a>
+        <span style="font-size:.82rem;color:var(--muted)">one Postgres to a governed platform, with the decision record to prove it</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="paths" style="margin-top:0">
+      <h2>What is honest here 🧾</h2>
+      <p class="plede">This course quotes published work where published work exists, and labels the rest as a teaching model.</p>
+    </div>
+    <table class="clean">
+      <tr><th>Claim</th><th>Status</th></tr>
+      <tr><td>AI adoption raises delivery throughput and instability at the same time</td><td>DORA State of DevOps 2025. Epics completed per developer up 66.2 percent, with a negative relationship to delivery stability</td></tr>
+      <tr><td>Elite change failure rate sits near 5 percent</td><td>DORA four keys. The 2025 report replaced the four tiers with seven team profiles</td></tr>
+      <tr><td>Give consumers at least 90 days notice of a breaking schema change</td><td>Published industry guidance, not a law. Your release cycle sets the real number</td></tr>
+      <tr><td>The model box is the small box in an ML system</td><td>Sculley et al., NeurIPS 2015, and it has not stopped being true</td></tr>
+      <tr><td>Every number on the tradeoff board</td><td>A teaching model. Shapes of trades are real, digits are calibrated for teaching and are not a benchmark of your platform. Every constant is written down in the source map</td></tr>
+    </table>
+  </section>
+
+  <section class="section mm-section">
+    <h2>The knowledge map 🧠</h2>
+    <p class="mm-lede">The whole course at a glance - hover a session to spotlight its concepts, click any node to jump in.</p>
+    <div class="mm-wrap"><div id="mindmap"></div></div>
+  </section>
+
+  <footer class="pagefoot">
+    <span>learn-system-design-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></span>
+    <span>Source map with every URL: <span class="mono">materials/official-course-map.md</span></span>
+  </footer>
+
+</main>
+
+<script>
+window.MINDMAP_DATA = {
+  title: "Learn\nSystem Design",
+  centerColor: "#08324A",
+  sessions: [
+    { label: "Requirements\nto constraints", href: "courses/01-requirements-to-constraints.html", color: "#34D399",
+      concepts: [
+        { label: "Complaint to number", href: "courses/01-requirements-to-constraints.html" },
+        { label: "Back of envelope", href: "courses/01-requirements-to-constraints.html" },
+        { label: "The one-page doc", href: "courses/01-requirements-to-constraints.html" } ] },
+    { label: "Boundaries\nand contracts", href: "courses/02-boundaries-and-contracts.html", color: "#34D399",
+      concepts: [
+        { label: "Three couplings", href: "courses/02-boundaries-and-contracts.html" },
+        { label: "What is in a contract", href: "courses/02-boundaries-and-contracts.html" },
+        { label: "Break the producer", href: "courses/02-boundaries-and-contracts.html" } ] },
+    { label: "Storage and\nserving", href: "courses/03-storage-and-serving.html", color: "#FBBF24",
+      concepts: [
+        { label: "Access pattern decides", href: "courses/03-storage-and-serving.html" },
+        { label: "Freshness-cost curve", href: "courses/03-storage-and-serving.html" },
+        { label: "Design to p95", href: "courses/03-storage-and-serving.html" } ] },
+    { label: "Orchestration\ntopology", href: "courses/04-orchestration-topology.html", color: "#FBBF24",
+      concepts: [
+        { label: "Time vs what finished", href: "courses/04-orchestration-topology.html" },
+        { label: "Idempotency", href: "courses/04-orchestration-topology.html" },
+        { label: "SLAs on data", href: "courses/04-orchestration-topology.html" } ] },
+    { label: "Designing\nfor failure", href: "courses/05-designing-for-failure.html", color: "#FB923C",
+      concepts: [
+        { label: "Blast radius", href: "courses/05-designing-for-failure.html" },
+        { label: "Transient vs permanent", href: "courses/05-designing-for-failure.html" },
+        { label: "The profile flip", href: "courses/05-designing-for-failure.html" } ] },
+    { label: "The governed\nshell", href: "courses/06-the-governed-shell.html", color: "#FB923C",
+      concepts: [
+        { label: "Access at the boundary", href: "courses/06-the-governed-shell.html" },
+        { label: "Lineage as output", href: "courses/06-the-governed-shell.html" },
+        { label: "Deletion by design", href: "courses/06-the-governed-shell.html" } ] },
+    { label: "AI as a\ncomponent", href: "courses/07-ai-as-a-component.html", color: "#F87171",
+      concepts: [
+        { label: "The small box", href: "courses/07-ai-as-a-component.html" },
+        { label: "Indexes go stale", href: "courses/07-ai-as-a-component.html" },
+        { label: "Unbounded loops", href: "courses/07-ai-as-a-component.html" } ] },
+    { label: "The design\nreview", href: "courses/08-the-design-review.html", color: "#F87171",
+      concepts: [
+        { label: "ADR in four parts", href: "courses/08-the-design-review.html" },
+        { label: "One-way doors", href: "courses/08-the-design-review.html" },
+        { label: "The capstone review", href: "courses/08-the-design-review.html" } ] }
+  ]
+};
+</script>
+<script src="assets/mindmap.js?v=2"></script>
+<script src="assets/app.js?v=2"></script>
+</body>
+</html>
