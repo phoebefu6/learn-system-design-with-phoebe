@@ -76,6 +76,33 @@ body {
 .chip.time { background: var(--ink); color: #fff; font-variant-numeric: tabular-nums; }
 
 
+/* ---------- agenda band ----------
+   Recovered 2026-09-02. These six repos were scaffolded from a stylesheet that had
+   lost this block, so .agenda rendered as run-on inline text ~700px tall inside the
+   masthead. 87 of 93 repos carry it; these were the exception, and they were also the
+   six the estate sweep could not see. See course-builder/references/field-notes.md.
+
+   .a3 does NOT reuse the donor's `color: var(--amber-ink)`: that pair falls below
+   4.5:1 against --amber in all six palettes, which is the same failure the sweep
+   flags on the wellbeing courses. The literal below is the darkest tone of this
+   repo's own amber-ink that clears 4.5:1, so the band stays bright. Recompute it if
+   --amber changes. */
+.agenda {
+  display: flex;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 1.4rem 0 0;
+  font-size: .72rem;
+  font-weight: 600;
+  text-align: center;
+  color: #fff;
+}
+.agenda span { padding: .45rem .3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agenda .a1 { background: var(--indigo-deep); }
+.agenda .a2 { background: var(--indigo-mid); }
+.agenda .a3 { background: var(--amber); color: #603D00; }
+.agenda .a4 { background: var(--indigo-soft); color: var(--ink); }
+
 /* ---------- toolbar ---------- */
 .toolbar {
   position: sticky;
